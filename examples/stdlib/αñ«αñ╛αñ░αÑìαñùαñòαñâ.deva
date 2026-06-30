@@ -1,0 +1,129 @@
+# मार्गकः — a routing library for Devabhāṣā, written in Devabhāṣā itself.
+# Built on the सेवक HTTP primitive; turns raw request dispatch into a clean
+# method + path router with path parameters and middleware.
+#
+# Usage:
+#   आयात { मार्गकः } आ "मार्गकः"।
+#   चर ऐप = मार्गकः()।
+#   ऐप.प्राप्("/ग्रन्थाः", कार्य(अ, प्र){ प्र.प्रेषय_जेसन(सूची)। })।
+#   ऐप.प्राप्("/ग्रन्थाः/:अंकः", कार्य(अ, प्र){ प्र.प्रेषय_जेसन(अ.प्राचलाः["अंकः"])। })।
+#   ऐप.स्थापय("/ग्रन्थाः", कार्य(अ, प्र){ ... })।    # POST
+#   ऐप.उपयुज्(असमकालिक कार्य(अ, प्र, अग्रे){ ...; प्रतीक्षा अग्रे()। })।  # middleware
+#   ऐप.चालय(८०८०)।
+#
+# MIDDLEWARE CONTRACT (Koa-style): a middleware is असमकालिक and calls
+# `प्रतीक्षा अग्रे()` to pass control downstream. Awaiting अग्रे is what lets the
+# server wait for the whole chain (including an async final handler) before it
+# ends the response — so do `प्रतीक्षा अग्रे()`, not a bare `अग्रे()`.
+#
+# DESIGN — "optimum" for this scale:
+#   • Each route's path is COMPILED ONCE at registration into a segment list
+#     (static segments + :param markers), so per-request work is just a
+#     segment-by-segment compare — no re-parsing, no regex per request.
+#   • Routes are grouped BY METHOD, so a GET request never tests POST routes.
+#   • Path params are captured into अ.प्राचलाः during the match (no second pass).
+#   • Middleware is a simple next()-chain, run before the matched handler.
+# A radix tree would be the move at large route counts; at app scale this
+# segment-compare is effectively optimal and far simpler — an honest tradeoff.
+
+# split a path into non-empty segments: "/अ/ब" → ["अ","ब"], "/" → []
+कार्य खण्डय (पथ) {
+    चर कच्चाः = पथ.विभज("/")।
+    चर फलम्_ = []।
+    प्रत्येकम् (ख : कच्चाः) { यदि (ख != "") { फलम्_.योजय(ख)। } }
+    फलम् फलम्_।
+}
+
+# compile a path pattern once: each segment becomes { प्राचलः: bool, नाम: text }
+कार्य संकलय (पथ) {
+    चर खण्डाः = खण्डय(पथ)।
+    चर संकलिताः = []।
+    प्रत्येकम् (ख : खण्डाः) {
+        यदि (ख.अक्षरः(०) == ":") {
+            संकलिताः.योजय(कोष{ प्राचलः: सत्यम्, नाम: ख.खण्ड(१) })।
+        } अन्यथा {
+            संकलिताः.योजय(कोष{ प्राचलः: असत्यम्, नाम: ख })।
+        }
+    }
+    फलम् संकलिताः।
+}
+
+# try to match a compiled pattern against request segments.
+# returns the params object on success, or शून्यम् on no-match.
+कार्य मेलय (प्रतिमानम्, खण्डाः) {
+    यदि (प्रतिमानम्.दीर्घता != खण्डाः.दीर्घता) { फलम् शून्यम्। }
+    चर प्राचलाः = कोष{}।
+    चर अंकः = ०।
+    यावत् (अंकः < प्रतिमानम्.दीर्घता) {
+        चर भागः = प्रतिमानम्[अंकः]।
+        चर मूल्यम् = खण्डाः[अंकः]।
+        यदि (भागः.प्राचलः) {
+            प्राचलाः[भागः.नाम] = मूल्यम्।
+        } अन्यथा {
+            यदि (भागः.नाम != मूल्यम्) { फलम् शून्यम्। }
+        }
+        अंकः = अंकः + १।
+    }
+    फलम् प्राचलाः।
+}
+
+# --- the router factory ---
+निर्यात कार्य मार्गकः () {
+    # routes grouped by method → each entry { प्रतिमानम्, कार्यम् }
+    चर मार्गाः = कोष{ GET: [], POST: [], PUT: [], DELETE: [] }।
+    चर मध्यगाः = []।   # middleware chain
+
+    # register a route under a method (internal helper)
+    कार्य पञ्जीकृ (रीतिः, पथ, कार्यम्) {
+        मार्गाः[रीतिः].योजय(कोष{ प्रतिमानम्: संकलय(पथ), कार्यम्: कार्यम् })।
+    }
+
+    चर ऐप = कोष{}।
+
+    ऐप.प्राप् = कार्य(पथ, कार्यम्){ पञ्जीकृ("GET", पथ, कार्यम्)। }।
+    ऐप.स्थापय = कार्य(पथ, कार्यम्){ पञ्जीकृ("POST", पथ, कार्यम्)। }।
+    ऐप.परिवर्तय = कार्य(पथ, कार्यम्){ पञ्जीकृ("PUT", पथ, कार्यम्)। }।
+    ऐप.निष्कासय = कार्य(पथ, कार्यम्){ पञ्जीकृ("DELETE", पथ, कार्यम्)। }।
+    ऐप.उपयुज् = कार्य(कार्यम्){ मध्यगाः.योजय(कार्यम्)। }।
+
+    # run the middleware chain, then the matched handler — async-aware, so a
+    # handler returning a promise is awaited before सेवक ends the response.
+    असमकालिक कार्य प्रेषय (अनुरोधः, प्रत्युत्तरम्, हस्तकः) {
+        चर अनुक्रमः = ०।
+        असमकालिक कार्य अग्रे () {
+            यदि (अनुक्रमः < मध्यगाः.दीर्घता) {
+                चर म = मध्यगाः[अनुक्रमः]।
+                अनुक्रमः = अनुक्रमः + १।
+                प्रतीक्षा म(अनुरोधः, प्रत्युत्तरम्, अग्रे)।
+            } अन्यथा {
+                प्रतीक्षा हस्तकः(अनुरोधः, प्रत्युत्तरम्)।
+            }
+        }
+        प्रतीक्षा अग्रे()।
+    }
+
+    # the actual सेवक handler: match method + path, attach params, dispatch
+    ऐप.चालय = कार्य(पत्तनम्){
+        सेवक(असमकालिक कार्य(अनुरोधः, प्रत्युत्तरम्){
+            चर सूची = मार्गाः[अनुरोधः.रीतिः]।
+            यदि (सूची == शून्यम्) { सूची = []। }
+            चर खण्डाः = खण्डय(अनुरोधः.मार्गः)।
+            चर मिलितम् = असत्यम्।
+            प्रत्येकम् (म : सूची) {
+                यदि (मिलितम् == असत्यम्) {
+                    चर प्राचलाः = मेलय(म.प्रतिमानम्, खण्डाः)।
+                    यदि (प्राचलाः != शून्यम्) {
+                        अनुरोधः.प्राचलाः = प्राचलाः।
+                        मिलितम् = सत्यम्।
+                        प्रतीक्षा प्रेषय(अनुरोधः, प्रत्युत्तरम्, म.कार्यम्)।
+                    }
+                }
+            }
+            यदि (मिलितम् == असत्यम्) {
+                प्रत्युत्तरम्.स्थिति(४०४).प्रेषय_जेसन(कोष{ दोषः: "मार्गः न प्राप्तः", पथ: अनुरोधः.मार्गः })।
+            }
+        }, पत्तनम्)।
+    }।
+
+    फलम् ऐप।
+}

@@ -1,0 +1,45 @@
+# रूपम् — CSS-IN-SANSKRIT styling.
+#
+# रूप (rūpa, "form/appearance") attaches CSS to an element. Both the
+# property names AND the value words are Sanskrit:
+#   वर्णः = color,  पृष्ठभूमिः = background,  अन्तरालः = padding,
+#   रक्तः = crimson, नीलः = navy, केसरः = saffron, केन्द्रम् = center …
+#
+# Color WORDS become CSS literals; bare variables stay references; quoted
+# strings ("18px") pass through; unknown CSS props ("cursor") pass through.
+# रूप composes with समास, so whole styled trees are just nested रचय blocks.
+
+चर मुख्यवर्णः = "#1A237E"।   # a variable color, used by reference
+
+चर पत्रम् = रचय मूलः रूप {
+    पृष्ठभूमिः: केसरः,
+    अन्तरालः: "24px",
+    कोणवृत्तिः: "14px",
+    संरेखणम्: केन्द्रम्,
+    चौडाई: "320px"
+} {
+
+    रचय शीर्षः वाक्यम् "देवभाषा" रूप {
+        वर्णः: मुख्यवर्णः,        # variable reference
+        अक्षरमानम्: "32px",
+        अक्षरभारः: गुरुः           # bold
+    }।
+
+    रचय वाक्यः वाक्यम् "संस्कृतेन रचितं सुन्दरं जालपृष्ठम्।" रूप {
+        वर्णः: श्यामः,
+        पङ्क्तिमानम्: "1.6"
+    }।
+
+    रचय पटः वाक्यम् "स्पृश माम्"  स्पर्शाय  करणेन कार्य () {
+        दर्शय("स्पृष्टम्!")।
+    }  रूप {
+        वर्णः: श्वेतः,
+        पृष्ठभूमिः: रक्तः,
+        अन्तरालः: "12px 24px",
+        कोणवृत्तिः: "8px",
+        सीमा: अदृश्यम्,
+        cursor: "pointer"        # raw CSS passes through
+    }।
+}।
+
+योजय(पत्रम्)।

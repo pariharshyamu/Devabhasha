@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Devabhasha",
+  "scopeName": "source.devabhasha",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords-declaration" },
+    { "include": "#keywords-control" },
+    { "include": "#keywords-constant" },
+    { "include": "#keywords-web" },
+    { "include": "#keywords-module" },
+    { "include": "#keywords-builtin" },
+    { "include": "#danda" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.devabhasha",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.interpolated.devabhasha",
+          "begin": "पाठ\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "meta.interpolation.devabhasha",
+              "begin": "\\{",
+              "end": "\\}",
+              "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.devabhasha" } },
+              "endCaptures": { "0": { "name": "punctuation.section.interpolation.end.devabhasha" } },
+              "patterns": [{ "include": "$self" }]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.devabhasha",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.devabhasha", "match": "\\\\." }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.devabhasha",
+          "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.devanagari.devabhasha",
+          "match": "[०१२३४५६७८९]+(\\.[०१२३४५६७८९]+)?"
+        }
+      ]
+    },
+    "keywords-declaration": {
+      "name": "storage.type.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(चर|नियत|कार्य|भाव|रूपनाम|असमकालिक)(?![\\u0900-\\u097F])"
+    },
+    "keywords-control": {
+      "name": "keyword.control.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(यदि|अन्यथा|यावत्|प्रत्येकम्|फलम्|भङ्ग|अनुवृत्तम्|प्रतीक्षा|अथवा|दृश्य)(?![\\u0900-\\u097F])"
+    },
+    "keywords-constant": {
+      "name": "constant.language.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(सत्यम्|असत्यम्|शून्यम्)(?![\\u0900-\\u097F])"
+    },
+    "keywords-web": {
+      "name": "support.function.web.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(रचय|अङ्गम्|योजय|श्रोता|रूप|सूत्र|प्रभाव|बन्ध|आवली|सफाई|आलस्यचित्रम्|कालचक्र|कालनाशः|कुञ्जिश्रोता)(?![\\u0900-\\u097F])"
+    },
+    "keywords-module": {
+      "name": "keyword.control.import.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(निर्यात|आयात|आ)(?![\\u0900-\\u097F])"
+    },
+    "keywords-builtin": {
+      "name": "support.function.builtin.devabhasha",
+      "match": "(?<![\\u0900-\\u097F])(दर्शय|कोष|गणित|प्रदत्त|अङ्कय|स्वरूपम्|सूचीवत्|सञ्चिका|जाल)(?![\\u0900-\\u097F])"
+    },
+    "danda": {
+      "name": "punctuation.terminator.devabhasha",
+      "match": "।"
+    }
+  }
+}

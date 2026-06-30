@@ -1,0 +1,36 @@
+{
+  "name": "devabhasha",
+  "displayName": "Devabhāṣā (देवभाषा)",
+  "description": "Language support for Devabhāṣā — the Sanskrit programming language: syntax highlighting, completion, hover, go-to-definition, rename, and live diagnostics.",
+  "version": "1.0.0",
+  "publisher": "devabhasha",
+  "license": "MIT",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "keywords": ["sanskrit", "devanagari", "devabhasha", "देवभाषा"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:devabhasha"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "devabhasha",
+        "aliases": ["Devabhāṣā", "devabhasha", "देवभाषा"],
+        "extensions": [".deva"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "devabhasha",
+        "scopeName": "source.devabhasha",
+        "path": "./syntaxes/devabhasha.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "devabhasha.run",
+        "title": "Devabhāṣā: Run current file (देवभाषा चालय)"
+      }
+    ]
+  }
+}

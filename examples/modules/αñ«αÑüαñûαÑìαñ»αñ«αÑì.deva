@@ -1,0 +1,15 @@
+# मुख्यम् — the entry program. It imports from the library module.
+
+# named imports: bring specific bindings into scope
+आयात { माध्यम्, अभाज्यः } आ "गणितागारम्"।
+
+# namespace import: bring the whole module as one object
+आयात * रूपेण ग आ "गणितागारम्"।
+
+चर अङ्काः = [४, ८, १५, १६, २३, ४२]।
+
+दर्शय("माध्यम् (mean):", माध्यम्(अङ्काः))।
+दर्शय("१७ अभाज्यः?", अभाज्यः(१७))।
+दर्शय("१८ अभाज्यः?", अभाज्यः(१८))।
+दर्शय("योगफलम् (via namespace):", ग.योगफलम्(अङ्काः))।
+दर्शय("स्वर्णानुपातः (φ):", ग.स्वर्णानुपातः)।

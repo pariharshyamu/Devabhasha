@@ -1,0 +1,36 @@
+# सञ्चिका-जालम् — file and network I/O.
+#
+# Every I/O operation is असमकालिक (async) and returns a परिणाम (Result):
+# you प्रतीक्षा (await) it, then inspect .सफल / .मूल्यम् / .दोषः. No exceptions —
+# a failure is just a value, so missing files never crash the program.
+#
+# The program talks to the __IO INTERFACE, not to Node directly: the same
+# code runs against the Node backend (CLI), a browser backend, or an
+# in-memory test backend, depending on which __IO the host injects.
+
+असमकालिक कार्य मुख्यम् () {
+
+    # --- write a file ---
+    चर लेखनम् = प्रतीक्षा सञ्चिका.लिख("/tmp/देवभाषा-संदेशः.txt", "नमस्ते जगत्!")।
+    यदि (लेखनम्.सफल) { दर्शय("✓ लिखितम्")। }
+    अन्यथा           { दर्शय("✗ लेखदोषः:", लेखनम्.दोषः)। }
+
+    # --- read it back ---
+    चर पठनम् = प्रतीक्षा सञ्चिका.पठ("/tmp/देवभाषा-संदेशः.txt")।
+    यदि (पठनम्.सफल) { दर्शय("✓ पठितम्:", पठनम्.मूल्यम्)। }
+    अन्यथा          { दर्शय("✗ पठदोषः:", पठनम्.दोषः)। }
+
+    # --- a missing file fails gracefully (Result, not a crash) ---
+    चर त्रुटिः = प्रतीक्षा सञ्चिका.पठ("/tmp/अविद्यमानम्.txt")।
+    दर्शय("अविद्यमानस्य सफलता?", त्रुटिः.सफल)।   # → false
+
+    # --- fetch over HTTP ---
+    चर जालम् = प्रतीक्षा जाल.आनय("https://api.github.com/zen")।
+    यदि (जालम्.सफल) {
+        दर्शय("✓ जालस्थितिः:", जालम्.मूल्यम्.स्थितिः)।
+    } अन्यथा {
+        दर्शय("✗ जालदोषः:", जालम्.दोषः)।
+    }
+}
+
+मुख्यम्()।

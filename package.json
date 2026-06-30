@@ -1,0 +1,39 @@
+{
+  "name": "devabhasha",
+  "version": "1.0.0",
+  "description": "देवभाषा — a Sanskrit programming language for the web that transpiles to JavaScript",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./bundler": "./src/bundler.js",
+    "./cli": "./src/cli.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "devabhasha": "./src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "sanskrit",
+    "transpiler",
+    "compiler",
+    "devanagari",
+    "programming-language",
+    "javascript",
+    "devabhasha"
+  ],
+  "author": "Shyamu Parihar <pariharshyamu@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

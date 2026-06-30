@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+
+# build artifacts produced by build-* scripts
+extension-build/
+playground/index.html
+
+# packaged VS Code extension (regenerate with build-extension.js)
+*.vsix
+
+# compiled output next to .deva sources
+examples/**/*.js
+examples/**/*.js.map
+!examples/**/चालय.mjs

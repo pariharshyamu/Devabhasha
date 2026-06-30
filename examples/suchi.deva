@@ -1,0 +1,50 @@
+# सूची-दत्तांशः — DATA-DRIVEN LISTS + NAMED STYLES.
+#
+# Two web features working together:
+#   • list rendering — map a data array to DOM children with .प्रतिचित्रय
+#   • रूपनाम — declare a reusable named style, apply it by name (with
+#     optional per-element overrides via  रूप नाम { ...overrides }).
+
+# A reusable "card" style, declared once and shared by every list item.
+रूपनाम कार्डः = रूप {
+    पृष्ठभूमिः: श्वेतः,
+    अन्तरालः: "12px 16px",
+    कोणवृत्तिः: "8px",
+    बाह्यान्तरः: "8px 0",
+    सीमा: "1px solid #eee"
+}।
+
+# The data.
+चर ग्रन्थाः = [
+    कोष{ नाम: "रामायणम्",   लेखकः: "वाल्मीकिः" },
+    कोष{ नाम: "महाभारतम्",  लेखकः: "व्यासः" },
+    कोष{ नाम: "मेघदूतम्",   लेखकः: "कालिदासः" },
+    कोष{ नाम: "अभिज्ञानशाकुन्तलम्", लेखकः: "कालिदासः" }
+]।
+
+# The page: a styled container whose children are the heading PLUS a list
+# of cards mapped from the data.
+चर पृष्ठम् = रचय मूलः रूप {
+    पृष्ठभूमिः: केसरः,
+    अन्तरालः: "20px",
+    कोणवृत्तिः: "12px",
+    चौडाई: "360px"
+} {
+    रचय शीर्षः वाक्यम् "ग्रन्थसूची" रूप {
+        वर्णः: नीलः, संरेखणम्: केन्द्रम्, बाह्यान्तरः: "0 0 12px 0"
+    }।
+
+    # map each भbook to a card element (named style + per-card content)
+    ग्रन्थाः.प्रतिचित्रय(कार्य (ग) {
+        फलम् रचय मूलः रूप कार्डः {
+            रचय शीर्षः वाक्यम् ग.नाम रूप {
+                वर्णः: रक्तः, अक्षरमानम्: "18px", बाह्यान्तरः: "0"
+            }।
+            रचय वाक्यः वाक्यम् ग.लेखकः रूप {
+                वर्णः: श्यामः, अक्षरमानम्: "14px"
+            }।
+        }।
+    })
+}।
+
+योजय(पृष्ठम्)।

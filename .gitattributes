@@ -1,0 +1,3 @@
+# Keep LF endings for all text sources (Devanagari .deva files are UTF-8 text).
+* text=auto eol=lf
+*.vsix binary

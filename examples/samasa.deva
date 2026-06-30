@@ -1,0 +1,30 @@
+# समासः — COMPOUND COMPOSITION: nested DOM element trees.
+#
+# कारक (kāraka) handles a single element's roles via case endings.
+# समास (samāsa) handles how elements NEST — the structural counterpart.
+#
+# A block form  रचय <tag-nom> { ...children... }  is a तत्पुरुष container
+# whose body is a द्वन्द्व (sibling list). It composes recursively, so trees
+# of arbitrary depth are just nested रचय blocks.
+#
+# Container tags use the NOMINATIVE (कर्तृ → tag): मूलः (div), सूचीः (ul) …
+# Content uses the ACCUSATIVE marker वाक्यम् (कर्म → content).
+
+चर पृष्ठम् = रचय मूलः {
+
+    रचय शीर्षः वाक्यम् "देवभाषा"।
+
+    रचय वाक्यः वाक्यम् "संस्कृतेन रचितं जालपृष्ठम्।"।
+
+    रचय सूचीः {
+        रचय पङ्क्तिः वाक्यम् "कारकम् — roles from case endings"।
+        रचय पङ्क्तिः वाक्यम् "समासः — nesting from compounds"।
+        रचय पङ्क्तिः वाक्यम् "स्वयंसंकलनम् — self-hosting compiler"।
+    }
+
+    रचय पटः वाक्यम् "नमस्कारः"  स्पर्शाय  करणेन कार्य () {
+        दर्शय("क्लिक्!")।
+    }
+}।
+
+योजय(पृष्ठम्)।

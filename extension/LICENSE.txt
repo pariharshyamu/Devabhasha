@@ -1,0 +1,1 @@
+MIT License — Devabhāṣā VS Code extension.

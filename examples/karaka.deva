@@ -1,0 +1,22 @@
+# कारकम् — kāraka construction with FREE WORD ORDER
+#
+# रचय (construct) reads each argument's ROLE from its case ending:
+#   पटः      (nominative / कर्तृ)    → what the element is        → <button>
+#   वाक्यम्   (accusative / कर्म)     → content placed in it
+#   स्पर्शाय  (dative / सम्प्रदान)     → the event it responds to    → "click"
+#   करणेन    (instrumental / करण)   → the handler (instrument)
+#   मूले     (locative / अधिकरण)    → where it mounts (the locus)
+#
+# Because roles come from endings, the arguments below could be written
+# in ANY order and compile to exactly the same JavaScript.
+
+चर गणना = ०।
+
+कार्य वर्धक () {
+    गणना = गणना + १।
+    दर्शय("मानम्:", गणना)।
+}
+
+# nominative names the tag; accusative marks content; dative marks the
+# event; instrumental marks the handler — all order-free.
+रचय  पटः  वाक्यम् "वर्धय (increment)"  स्पर्शाय  करणेन वर्धक।

@@ -1,0 +1,40 @@
+# घटकाः — COMPONENTS: reusable रचय-returning functions with props.
+# A component is just a कार्य that takes props and returns a रचय tree.
+# Static props pass by value; reactive props pass as सूत्र(cell) — explicit,
+# so you can SEE which inputs are live.
+
+# a reusable "stat card" component
+कार्य आँकडापत्रम् (शीर्षकम्, मूल्यसूत्रम्, वर्णः) {
+    फलम् रचय मूलः रूप {
+        पृष्ठभूमिः: श्वेतः, अन्तरालः: "14px 18px", कोणवृत्तिः: "10px",
+        बाह्यान्तरः: "8px", सीमा: "1px solid #eee", चौडाई: "150px"
+    } {
+        रचय शीर्षः वाक्यम् शीर्षकम्
+            रूप { वर्णः: धूसरः, अक्षरमानम्: "13px", बाह्यान्तरः: "0" }।
+        रचय वाक्यः वाक्यम् मूल्यसूत्रम्
+            रूप { वर्णः: वर्णः, अक्षरमानम्: "28px", अक्षरभारः: गुरुः, बाह्यान्तरः: "4px 0 0 0" }।
+    }।
+}
+
+# a button component taking a label and a click handler (callback prop)
+कार्य आवर्तकपटः (नाम, कर्म) {
+    फलम् रचय पटः वाक्यम् नाम
+        स्पर्शाय करणेन कर्म
+        रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "10px 16px",
+               कोणवृत्तिः: "6px", सीमा: अदृश्यम्, cursor: "pointer", बाह्यान्तरः: "8px 4px" }।
+}
+
+# --- compose them into an app ---
+भाव क्लिकाः = ०।
+भाव सेकण्डाः = ०।
+कालचक्र(कार्य(){ सेकण्डाः = सेकण्डाः + १। }, १०००)।
+
+चर मूलपटः = रचय मूलः रूप { अन्तरालः: "20px", पृष्ठभूमिः: "#f4f1ea" }।
+
+# reuse the SAME component three times with different props
+मूलपटः.append(आँकडापत्रम्("क्लिक्-सङ्ख्या", सूत्र(क्लिकाः), "navy"))।
+मूलपटः.append(आँकडापत्रम्("सेकण्ड-गणना", सूत्र(सेकण्डाः), "crimson"))।
+मूलपटः.append(आँकडापत्रम्("स्थिरम्", सूत्र(४२), "green"))।
+मूलपटः.append(आवर्तकपटः("क्लिक् कुरु", कार्य(){ क्लिकाः = क्लिकाः + १। }))।
+
+योजय(मूलपटः)।   # mount to the page root

@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="sa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#20160F">
+<meta name="description" content="Devabhāṣā (देवभाषा) — a programming language written in Sanskrit that compiles to JavaScript. Try it live.">
+<title>देवभाषा · Devabhāṣā — the Sanskrit programming language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit:ital@0;1&family=Spectral:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --parchment:   #ECE3D0;
+    --parchment-2: #E3D7BE;
+    --panel:       #F4EEDF;
+    --ink:         #20160F;
+    --ink-soft:    #4A3B2E;
+    --vermilion:   #B23A1E;
+    --vermilion-d: #8C2B14;
+    --indigo:      #2A3D5C;
+    --gold:        #9A7B3F;
+    --rule:        #C3B392;
+    --header-h: 0px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--parchment);
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(154,123,63,0.10), transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(42,61,92,0.08), transparent 50%);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ---------- header / hero ---------- */
+  header {
+    padding: 22px 28px 16px;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+  header::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -6px;
+    height: 1px; background: var(--rule);
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .brand h1 {
+    font-family: 'Tiro Devanagari Sanskrit', serif;
+    font-size: clamp(30px, 7vw, 52px);
+    line-height: 1; margin: 0; color: var(--ink); letter-spacing: -0.5px;
+  }
+  .brand .latin { font-style: italic; font-size: clamp(15px, 4vw, 19px); color: var(--vermilion-d); letter-spacing: 0.5px; }
+  .brand .badge {
+    margin-left: auto; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 999px;
+    padding: 3px 10px; white-space: nowrap; align-self: center;
+  }
+  .tagline { margin: 9px 0 0; font-size: clamp(13px, 3.6vw, 15px); color: var(--ink-soft); max-width: 62ch; line-height: 1.5; }
+  .tagline b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- example gallery (toolbar) ---------- */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 28px; border-bottom: 1px solid var(--rule);
+    background: rgba(244,238,223,0.6); flex-wrap: wrap;
+  }
+  .gallery-label { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+  .examples { display: flex; gap: 7px; flex-wrap: wrap; }
+  .ex-group { display: flex; gap: 6px; align-items: center; }
+  .ex-group .grp { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gold); font-family: 'JetBrains Mono', monospace; margin-right: 1px; }
+  .examples button {
+    font-family: 'Tiro Devanagari Sanskrit', serif; font-size: 13px;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--rule);
+    border-radius: 7px; padding: 5px 11px; cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .08s;
+  }
+  .examples button:hover { background: var(--parchment-2); border-color: var(--gold); }
+  .examples button:active { transform: translateY(1px); }
+  .examples button.active { background: var(--indigo); color: #F4EEDF; border-color: var(--indigo); }
+
+  /* ---------- main grid (desktop) ---------- */
+  main {
+    flex: 1; display: grid; gap: 0; min-height: 0;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    grid-template-areas: "source js" "console stage";
+  }
+  .pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .pane.source  { grid-area: source; }
+  .pane.js      { grid-area: js; border-right: 0; }
+  .pane.console { grid-area: console; border-bottom: 0; }
+  .pane.stage   { grid-area: stage; border-right: 0; border-bottom: 0; }
+
+  .pane-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 18px; border-bottom: 1px solid var(--rule);
+    background: rgba(227,215,190,0.45);
+  }
+  .pane-head .label { font-family: 'Tiro Devanagari Sanskrit', serif; font-size: 15px; color: var(--ink); }
+  .pane-head .sub { font-size: 11px; color: var(--ink-soft); font-style: italic; font-family: 'Spectral', serif; }
+
+  #src {
+    flex: 1; margin: 0; padding: 18px 20px; border: 0; resize: none; width: 100%;
+    background: transparent; color: var(--ink);
+    font-family: 'JetBrains Mono', 'Tiro Devanagari Sanskrit', monospace;
+    font-size: 15px; line-height: 1.65; outline: none; min-height: 0;
+    tab-size: 4;
+  }
+  #out {
+    flex: 1; margin: 0; padding: 18px 20px; overflow: auto; min-height: 0;
+    background: rgba(42,61,92,0.04);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;
+    color: var(--indigo); white-space: pre-wrap; word-break: break-word;
+  }
+  #console {
+    flex: 1; margin: 0; padding: 14px 18px; overflow: auto; min-height: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;
+    color: var(--ink); white-space: pre-wrap; word-break: break-word;
+  }
+  #console .err { color: var(--vermilion-d); }
+  #stage { flex: 1; margin: 0; padding: 16px; overflow: auto; min-height: 0; background: var(--panel); }
+
+  /* ---------- controls bar ---------- */
+  .controls {
+    display: flex; gap: 10px; padding: 11px 18px; align-items: center;
+    border-top: 1px solid var(--rule); background: rgba(227,215,190,0.4);
+  }
+  .controls button {
+    font-family: 'Tiro Devanagari Sanskrit', serif; font-size: 15px;
+    border-radius: 8px; padding: 9px 18px; cursor: pointer; border: 1px solid var(--rule);
+    background: var(--panel); color: var(--ink); transition: background .12s, transform .08s;
+    min-height: 42px;
+  }
+  .controls button:active { transform: translateY(1px); }
+  .controls button.primary { background: var(--vermilion); color: #F6EFE0; border-color: var(--vermilion-d); font-weight: 600; }
+  .controls button.primary:hover { background: var(--vermilion-d); }
+  .controls button#copy:hover { background: var(--parchment-2); }
+
+  /* ---------- mobile tab bar (hidden on desktop) ---------- */
+  .tabs { display: none; }
+
+  footer {
+    padding: 12px 28px; font-size: 12px; color: var(--ink-soft);
+    border-top: 1px solid var(--rule); font-style: italic;
+  }
+  footer code { font-style: normal; font-family: 'JetBrains Mono', monospace; background: rgba(42,61,92,0.07); padding: 1px 5px; border-radius: 4px; }
+
+  /* ================= MOBILE ================= */
+  @media (max-width: 860px) {
+    header { padding: 16px 18px 12px; }
+    .brand .badge { display: none; }
+    .toolbar { padding: 9px 14px; gap: 8px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .gallery-label { display: none; }
+    .examples { flex-wrap: nowrap; }
+    .examples button { font-size: 14px; padding: 7px 13px; }
+
+    /* one pane visible at a time, switched by the tab bar */
+    main {
+      display: block; flex: 1; position: relative; min-height: 0;
+    }
+    .pane {
+      display: none; border: 0;
+      height: calc(100vh - var(--header-h));
+      max-height: none;
+    }
+    .pane.is-active { display: flex; }
+    #src { font-size: 16px; }   /* 16px avoids iOS zoom-on-focus */
+
+    .tabs {
+      display: flex; position: sticky; bottom: 0; z-index: 5;
+      border-top: 2px solid var(--ink); background: var(--parchment-2);
+    }
+    .tabs button {
+      flex: 1; border: 0; background: transparent; cursor: pointer;
+      font-family: 'Tiro Devanagari Sanskrit', serif; font-size: 14px;
+      color: var(--ink-soft); padding: 12px 4px 11px; min-height: 48px;
+      border-top: 3px solid transparent;
+    }
+    .tabs button .en { display: block; font-family: 'Spectral', serif; font-style: italic; font-size: 10px; color: var(--gold); margin-top: 1px; }
+    .tabs button.active { color: var(--ink); border-top-color: var(--vermilion); background: var(--panel); }
+
+    .controls { padding: 10px 14px; }
+    .controls button { flex: 1; }
+    footer { display: none; }
+  }
+  @media (max-width: 420px) {
+    .brand { gap: 8px; }
+    .tagline { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>देवभाषा</h1>
+    <span class="latin">Devabhāṣā</span>
+    <span class="badge">Sanskrit → JavaScript</span>
+  </div>
+  <p class="tagline">
+    A programming language written in Sanskrit that compiles to JavaScript.
+    Write with <b>चर</b> (variable), <b>कार्य</b> (function), <b>यदि</b> (if),
+    <b>रचय</b> (build UI) — fine-grained reactivity, components, the lot.
+    Pick an example, edit it, watch it run.
+  </p>
+</header>
+
+<div class="toolbar">
+  <span class="gallery-label">उदाहरणानि · examples:</span>
+  <div class="examples" id="examples"></div>
+</div>
+
+<main>
+  <section class="pane source is-active" data-pane="source">
+    <div class="pane-head"><span class="label">मूलपाठः</span><span class="sub">source · Sanskrit</span></div>
+    <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+    <div class="controls">
+      <button class="primary" id="run">▸ चालय (run)</button>
+      <button id="copy">प्रतिलिपि (copy JS)</button>
+    </div>
+  </section>
+
+  <section class="pane js" data-pane="js">
+    <div class="pane-head"><span class="label">जावास्क्रिप्ट्</span><span class="sub">compiled output</span></div>
+    <pre id="out"></pre>
+  </section>
+
+  <section class="pane console" data-pane="console">
+    <div class="pane-head"><span class="label">प्रतिफलम्</span><span class="sub">console</span></div>
+    <div id="console"></div>
+  </section>
+
+  <section class="pane stage" data-pane="stage">
+    <div class="pane-head"><span class="label">रङ्गमञ्चः</span><span class="sub">DOM stage · web examples</span></div>
+    <div id="stage"></div>
+  </section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="source" class="active">मूलम्<span class="en">source</span></button>
+  <button data-tab="js">JS<span class="en">compiled</span></button>
+  <button data-tab="console">फलम्<span class="en">console</span></button>
+  <button data-tab="stage">मञ्चः<span class="en">stage</span></button>
+</nav>
+
+<footer>
+  Statements end with the danda <code>।</code> or <code>;</code> · comments start with <code>#</code> ·
+  identifiers may be written in Devanagari and are transliterated in the output.
+</footer>
+
+<script>
+/*__BUNDLE__*/
+</script>
+
+<script>
+const EXAMPLES = {
+  namaste: `# नमस्ते उदाहरणम्
+कार्य अभिवादनम् (नाम) {
+    फलम् "नमस्ते, " + नाम + "!"।
+}
+
+चर लोकः = "जगत्"।
+दर्शय(अभिवादनम्(लोकः))।
+
+चर योगः = ०।
+प्रत्येकम् (अङ्कः : [१, २, ३, ४, ५]) {
+    योगः = योगः + अङ्कः।
+}
+दर्शय("योगः:", योगः)।
+
+यदि (योगः > १०) {
+    दर्शय("दश अधिकम्")।
+} अन्यथा {
+    दर्शय("दश न्यूनम्")।
+}`,
+  ganaka: `# गणकः — a live web counter
+चर गणना = ०।
+
+चर शीर्षकम् = अङ्गम्("h1", "गणकः")।
+चर प्रदर्शनम् = अङ्गम्("p", "मानम्: ०")।
+चर पटः = अङ्गम्("button", "वर्धय")।
+
+श्रोता(पटः, "click", कार्य () {
+    गणना = गणना + १।
+    प्रदर्शनम्.textContent = "मानम्: " + गणना।
+})।
+
+योजय(शीर्षकम्)।
+योजय(प्रदर्शनम्)।
+योजय(पटः)।`,
+  empty: `# लिखतु अत्र (write here)
+दर्शय("नमस्ते!")।`,
+  ganita: `# गणित — math: native bridge + Devabhāṣā statistics
+# ज्या/कोटिज्या are the classical Sanskrit names for sine/cosine.
+
+कार्य माध्यम् (सूची) {
+    चर स = ०।
+    प्रत्येकम् (x : सूची) { स = स + x। }
+    फलम् स / सूची.दीर्घता।
+}
+
+कार्य अभाज्यः (न) {
+    यदि (न < २) { फलम् असत्यम्। }
+    चर i = २।
+    यावत् (i * i <= न) {
+        यदि (न % i == ०) { फलम् असत्यम्। }
+        i = i + १।
+    }
+    फलम् सत्यम्।
+}
+
+चर दत्तांशः = [४, ८, १५, १६, २३, ४२]।
+दर्शय("माध्यम् (mean):", माध्यम्(दत्तांशः))।
+दर्शय("√२ =", गणित.वर्गमूलम्(२))।
+दर्शय("ज्या(π/६) =", गणित.ज्या(गणित.पाई / ६))।
+दर्शय("π =", गणित.पाई)।
+दर्शय("१७ अभाज्यः?", अभाज्यः(१७))।
+दर्शय("५! भाग —")।
+चर f = १। चर k = १।
+यावत् (k <= ५) { f = f * k। k = k + १। }
+दर्शय("५! =", f)।`,
+  sugar: `# मधुरचिह्नानि — operator sugar
+# += -= *= /=, ternary ? :, ?? , ++ --
+
+चर कुल = ०।
+प्रत्येकम् (x : [१, २, ३, ४, ५]) {
+    कुल += x > २ ? x : ०।        # add x only when x > 2
+}
+दर्शय("कुल (sum of >2):", कुल)।   # 12
+
+चर i = ०।
+यावत् (i < ३) {
+    दर्शय("i =", i)।
+    i++।                          # increment
+}
+
+चर दत्त = शून्यम्।
+दर्शय("?? default:", दत्त ?? "अज्ञातः")।
+
+चर n = -५।
+दर्शय("चिह्नम्:", n < ० ? "ऋण" : n == ० ? "शून्य" : "धन")।`,
+  samasa: `# समासः — nested DOM trees (compound composition)
+# Container tags use NOMINATIVE (मूलः=div, सूचीः=ul);
+# content uses ACCUSATIVE वाक्यम्. Blocks nest recursively.
+
+चर पृष्ठम् = रचय मूलः {
+    रचय शीर्षः वाक्यम् "देवभाषा"।
+    रचय वाक्यः वाक्यम् "संस्कृतेन रचितं जालपृष्ठम्।"।
+    रचय सूचीः {
+        रचय पङ्क्तिः वाक्यम् "कारकम् — roles from cases"।
+        रचय पङ्क्तिः वाक्यम् "समासः — nesting from compounds"।
+        रचय पङ्क्तिः वाक्यम् "स्वयंसंकलनम् — self-hosting"।
+    }
+    रचय पटः वाक्यम् "नमस्कारः" स्पर्शाय करणेन कार्य () {
+        दर्शय("क्लिक्!")।
+    }
+}।
+योजय(पृष्ठम्)।`,
+  rupa: `# रूपम् — CSS-in-Sanskrit styling
+# वर्णः=color, पृष्ठभूमिः=background, अन्तरालः=padding…
+# रक्तः=crimson, नीलः=navy, केसरः=saffron, केन्द्रम्=center
+
+चर पत्रम् = रचय मूलः रूप {
+    पृष्ठभूमिः: केसरः,
+    अन्तरालः: "24px",
+    कोणवृत्तिः: "12px",
+    संरेखणम्: केन्द्रम्
+} {
+    रचय शीर्षः वाक्यम् "देवभाषा" रूप {
+        वर्णः: नीलः, अक्षरमानम्: "30px"
+    }।
+    रचय वाक्यः वाक्यम् "सुन्दरं रूपम् संस्कृतेन।" रूप {
+        वर्णः: श्यामः
+    }।
+    रचय पटः वाक्यम् "स्पृश" रूप {
+        वर्णः: श्वेतः, पृष्ठभूमिः: रक्तः,
+        अन्तरालः: "10px 22px", कोणवृत्तिः: "6px", सीमा: अदृश्यम्
+    }।
+}।
+योजय(पत्रम्)।`,
+  suchi: `# सूची — data-driven list + named styles (रूपनाम)
+रूपनाम कार्डः = रूप {
+    पृष्ठभूमिः: श्वेतः, अन्तरालः: "12px 16px",
+    कोणवृत्तिः: "8px", बाह्यान्तरः: "8px 0"
+}।
+
+चर ग्रन्थाः = [
+    कोष{ नाम: "रामायणम्", लेखकः: "वाल्मीकिः" },
+    कोष{ नाम: "महाभारतम्", लेखकः: "व्यासः" },
+    कोष{ नाम: "मेघदूतम्", लेखकः: "कालिदासः" }
+]।
+
+चर पृष्ठम् = रचय मूलः रूप {
+    पृष्ठभूमिः: केसरः, अन्तरालः: "20px", कोणवृत्तिः: "12px"
+} {
+    रचय शीर्षः वाक्यम् "ग्रन्थसूची" रूप { वर्णः: नीलः, संरेखणम्: केन्द्रम् }।
+    ग्रन्थाः.प्रतिचित्रय(कार्य(ग) {
+        फलम् रचय मूलः रूप कार्डः {
+            रचय शीर्षः वाक्यम् ग.नाम रूप { वर्णः: रक्तः, अक्षरमानम्: "18px" }।
+            रचय वाक्यः वाक्यम् ग.लेखकः रूप { वर्णः: श्यामः }।
+        }।
+    })
+}।
+योजय(पृष्ठम्)।`,
+  vyaya: `# व्ययपत्रम् — a reactive EXPENSE TRACKER.
+भाव व्ययाः = [
+    कोष{ नाम: "पुस्तकम्", मूल्यम्: १२०, वर्गः: "शिक्षा" },
+    कोष{ नाम: "भोजनम्",  मूल्यम्: ३००, वर्गः: "आहारः" },
+    कोष{ नाम: "यानम्",   मूल्यम्: ८०,  वर्गः: "यात्रा" }
+]।
+भाव चयनितवर्गः = "सर्वम्"।
+
+कार्य योगम् (सूची) {
+    चर स = ०।
+    प्रत्येकम् (व : सूची) { स += व.मूल्यम्। }
+    फलम् स।
+}
+कार्य गालितव्ययाः () {
+    यदि (चयनितवर्गः == "सर्वम्") { फलम् व्ययाः। }
+    फलम् व्ययाः.गालय(कार्य(व){ फलम् व.वर्गः == चयनितवर्गः। })।
+}
+कार्य योजयव्ययम् (नाम, मूल्यम्, वर्गः) {
+    चर नूतनाः = []।
+    प्रत्येकम् (व : व्ययाः) { नूतनाः.योजय(व)। }
+    नूतनाः.योजय(कोष{ नाम: नाम, मूल्यम्: मूल्यम्, वर्गः: वर्गः })।
+    व्ययाः = नूतनाः।
+}
+
+रूपनाम पत्रशैली = रूप { पृष्ठभूमिः: श्वेतः, अन्तरालः: "10px 14px", कोणवृत्तिः: "8px", बाह्यान्तरः: "6px 0" }।
+रूपनाम पटशैली = रूप { वर्णः: श्वेतः, अन्तरालः: "6px 12px", कोणवृत्तिः: "6px", सीमा: अदृश्यम्, बाह्यान्तरः: "0 4px" }।
+
+# a filter button whose colour reflects whether it is active
+कार्य वर्गपटम् (वर्गनाम) {
+    चर सक्रियः = चयनितवर्गः == वर्गनाम।
+    फलम् रचय पटः वाक्यम् वर्गनाम
+        स्पर्शाय करणेन कार्य(){ चयनितवर्गः = वर्गनाम। }
+        रूप पटशैली { पृष्ठभूमिः: सक्रियः ? रक्तः : धूसरः }।
+}
+
+दृश्य {
+    रचय मूलः रूप { पृष्ठभूमिः: केसरः, अन्तरालः: "24px", कोणवृत्तिः: "14px", चौडाई: "400px" } {
+        रचय शीर्षः वाक्यम् "व्ययपत्रम्" रूप { वर्णः: नीलः, संरेखणम्: केन्द्रम्, बाह्यान्तरः: "0 0 4px 0" }।
+        रचय वाक्यः वाक्यम् पाठ"योगः: {योगम्(गालितव्ययाः())} रूप्यकाणि"
+            रूप { वर्णः: रक्तः, अक्षरभारः: गुरुः, संरेखणम्: केन्द्रम् }।
+
+        # filter buttons
+        रचय मूलः रूप { संरेखणम्: केन्द्रम्, बाह्यान्तरः: "10px 0" } {
+            वर्गपटम्("सर्वम्")।
+            वर्गपटम्("शिक्षा")।
+            वर्गपटम्("आहारः")।
+            वर्गपटम्("यात्रा")।
+        }।
+
+        # the filtered list
+        रचय सूचीः {
+            गालितव्ययाः().प्रतिचित्रय(कार्य(व){
+                फलम् रचय मूलः रूप पत्रशैली {
+                    रचय शीर्षः वाक्यम् व.नाम रूप { वर्णः: श्यामः, अक्षरमानम्: "16px", बाह्यान्तरः: "0" }।
+                    रचय वाक्यः वाक्यम् पाठ"{व.वर्गः} — {व.मूल्यम्}" रूप { वर्णः: धूसरः, अक्षरमानम्: "13px" }।
+                }।
+            })
+        }।
+
+        # add a sample expense
+        रचय पटः वाक्यम् "+ नूतनं व्ययं योजय"
+            स्पर्शाय करणेन कार्य(){ योजयव्ययम्("नवक्रयः", ५०, "आहारः")। }
+            रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "10px", कोणवृत्तिः: "6px", चौडाई: "100%", बाह्यान्तरः: "10px 0 0 0" }।
+    }
+}
+`,
+  counter: `# गणकः — reactive state (भाव) + auto re-render (दृश्य)
+भाव गणकः = ०।
+दृश्य {
+    रचय मूलः रूप { संरेखणम्: केन्द्रम्, अन्तरालः: "20px" } {
+        रचय शीर्षः वाक्यम् "गणना: " + गणकः रूप { वर्णः: नीलः }।
+        रचय पटः वाक्यम् "वर्धय (+1)" स्पर्शाय करणेन कार्य(){ गणकः++। }
+            रूप { पृष्ठभूमिः: रक्तः, वर्णः: श्वेतः, अन्तरालः: "10px 20px", कोणवृत्तिः: "6px" }।
+    }
+}`,
+  todo: `# कार्यसूची — a reactive TODO app
+भाव कार्याणि = ["संस्कृतं पठ", "देवभाषां लिख"]।
+
+कार्य योजय_कार्यम् (पाठः) {
+    चर नूतनानि = []।
+    प्रत्येकम् (क : कार्याणि) { नूतनानि.योजय(क)। }
+    नूतनानि.योजय(पाठः)।
+    कार्याणि = नूतनानि।
+}
+
+दृश्य {
+    रचय मूलः रूप { पृष्ठभूमिः: केसरः, अन्तरालः: "20px", कोणवृत्तिः: "12px", चौडाई: "320px" } {
+        रचय शीर्षः वाक्यम् "कार्यसूची" रूप { वर्णः: नीलः, संरेखणम्: केन्द्रम् }।
+        रचय सूचीः {
+            कार्याणि.प्रतिचित्रय(कार्य(क) {
+                फलम् रचय पङ्क्तिः वाक्यम् क रूप { वर्णः: श्यामः, अन्तरालः: "4px" }।
+            })
+        }।
+        रचय पटः वाक्यम् "+ कार्यं योजय" स्पर्शाय करणेन कार्य() {
+            योजय_कार्यम्("नूतनं कार्यम् " + कार्याणि.दीर्घता)।
+        } रूप { पृष्ठभूमिः: रक्तः, वर्णः: श्वेतः, अन्तरालः: "10px", कोणवृत्तिः: "6px", चौडाई: "100%" }।
+    }
+}`,
+  blog: `# ब्लॉग — a blog website in Devabhāṣā.
+# Demonstrates: components, reactive view-switching (list ↔ post), keyed list
+# rendering of post cards, and LAZY-LOADED images (आलस्यचित्रम्) that load only
+# when scrolled into view.
+
+# --- data: the posts ---
+चर लेखाः = [
+    कोष{ कुं: १, शीर्षकम्: "संस्कृतस्य सौन्दर्यम्",
+          सारः: "भाषाणां जननी संस्कृतम्। अस्य व्याकरणं गणितवत् सुस्पष्टम्।",
+          चित्रम्: "https://picsum.photos/seed/sanskrit/600/300",
+          पूर्णः: "संस्कृतं देवभाषा इति प्रसिद्धा। पाणिनेः अष्टाध्यायी सूत्ररूपेण सम्पूर्णं व्याकरणं वर्णयति। एषा भाषा न केवलं धार्मिकी अपि तु वैज्ञानिकी अपि।" },
+    कोष{ कुं: २, शीर्षकम्: "देवभाषा-संगणनम्",
+          सारः: "संस्कृतेन संगणकस्य क्रमादेशनम् — एकः नूतनः प्रयोगः।",
+          चित्रम्: "https://picsum.photos/seed/code/600/300",
+          पूर्णः: "देवभाषा नाम क्रमादेशनभाषा संस्कृतपदैः लिखिता जावास्क्रिप्ट्-रूपेण परिणमति। चरः, कार्यम्, यदि — एतानि पदानि स्वार्थयुक्तानि।" },
+    कोष{ कुं: ३, शीर्षकम्: "कारकप्रणाली",
+          सारः: "विभक्तिभिः पदानां सम्बन्धः — मुक्तपदक्रमस्य रहस्यम्।",
+          चित्रम्: "https://picsum.photos/seed/grammar/600/300",
+          पूर्णः: "कारकाणि सप्त सन्ति। कर्ता कर्म करणम् — एतैः वाक्ये पदानां भूमिका निश्चीयते, न तु क्रमेण। अतः पदक्रमः स्वतन्त्रः।" }
+]।
+
+# --- app state: which post is open (० = list view) ---
+भाव दृश्यम् = ०।   # 0 = list, else the post कुं
+
+कार्य लेखंप्राप्नु (कुं) {
+    चर फलितम् = लेखाः[०]।
+    प्रत्येकम् (ल : लेखाः) { यदि (ल.कुं == कुं) { फलितम् = ल। } }
+    फलम् फलितम्।
+}
+
+# --- component: a post card (for the list) ---
+कार्य लेखपत्रम् (लेख) {
+    चर पत्रम् = रचय मूलः रूप {
+        पृष्ठभूमिः: श्वेतः, कोणवृत्तिः: "12px", बाह्यान्तरः: "0 0 20px 0",
+        अन्तरालः: "0", सीमा: "1px solid #e8e2d5", overflow: "hidden", cursor: "pointer"
+    }।
+    # lazy-loaded cover image
+    चर आच्छादनम् = आलस्यचित्रम्(लेख.चित्रम्, कोष{
+        alt: लेख.शीर्षकम्,
+        placeholder: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect width='600' height='300' fill='%23ddd6c8'/%3E%3C/svg%3E"
+    })।
+    आच्छादनम्.style.width = "100%"।
+    आच्छादनम्.style.display = "block"।
+    पत्रम्.append(आच्छादनम्)।
+
+    चर सारपटः = रचय मूलः रूप { अन्तरालः: "16px 20px" } {
+        रचय शीर्षः वाक्यम् लेख.शीर्षकम् रूप { बाह्यान्तरः: "0 0 8px 0", अक्षरमानम्: "20px", वर्णः: "#3a2f1a" }।
+        रचय वाक्यः वाक्यम् लेख.सारः रूप { वर्णः: धूसरः, अक्षरमानम्: "14px", बाह्यान्तरः: "0" }।
+    }।
+    पत्रम्.append(सारपटः)।
+
+    श्रोता(पत्रम्, "click", कार्य(){ दृश्यम् = लेख.कुं। })।
+    फलम् पत्रम्।
+}
+
+# --- component: the full post (detail view) ---
+कार्य पूर्णलेखः (लेख) {
+    चर पटः = रचय मूलः रूप { पृष्ठभूमिः: श्वेतः, कोणवृत्तिः: "12px", अन्तरालः: "0", overflow: "hidden", सीमा: "1px solid #e8e2d5" }।
+    चर आच्छादनम् = आलस्यचित्रम्(लेख.चित्रम्, कोष{ alt: लेख.शीर्षकम् })।
+    आच्छादनम्.style.width = "100%"।
+    आच्छादनम्.style.display = "block"।
+    पटः.append(आच्छादनम्)।
+
+    चर देहः = रचय मूलः रूप { अन्तरालः: "20px 24px" } {
+        रचय शीर्षः वाक्यम् लेख.शीर्षकम् रूप { वर्णः: "#3a2f1a", बाह्यान्तरः: "0 0 12px 0" }।
+        रचय वाक्यः वाक्यम् लेख.पूर्णः रूप { वर्णः: "#444", अक्षरमानम्: "16px", रेखोच्चता: "1.7" }।
+    }।
+    पटः.append(देहः)।
+
+    चर प्रत्यागमः = रचय पटः वाक्यम् "← सर्वे लेखाः"
+        रूप { पृष्ठभूमिः: अदृश्यम्, वर्णः: नीलः, सीमा: अदृश्यम्, अन्तरालः: "12px 24px", cursor: "pointer", अक्षरमानम्: "15px" }।
+    श्रोता(प्रत्यागमः, "click", कार्य(){ दृश्यम् = ०। })।
+    पटः.append(प्रत्यागमः)।
+    फलम् पटः।
+}
+
+# --- the app shell ---
+चर आवरणम् = रचय मूलः रूप {
+    अधिकतमचौडाई: "640px", बाह्यान्तरः: "0 auto", अन्तरालः: "24px",
+    अक्षरकुलम्: "Georgia, serif", पृष्ठभूमिः: "#f4f1ea"
+}।
+
+चर शिरः = रचय शीर्षः वाक्यम् "देवभाषा-ब्लॉग्"
+    रूप { वर्णः: "#3a2f1a", अक्षरमानम्: "32px", बाह्यान्तरः: "0 0 24px 0", पाठसंरेखणम्: "center" }।
+आवरणम्.append(शिरः)।
+
+# the content area switches between list and detail based on दृश्यम्
+चर सामग्री = रचय मूलः।
+आवरणम्.append(सामग्री)।
+
+प्रभाव(कार्य(){
+    सामग्री.innerHTML = ""।
+    यदि (दृश्यम् == ०) {
+        प्रत्येकम् (ल : लेखाः) { सामग्री.append(लेखपत्रम्(ल))। }
+    } अन्यथा {
+        सामग्री.append(पूर्णलेखः(लेखंप्राप्नु(दृश्यम्)))।
+    }
+})।
+
+योजय(आवरणम्)।
+`,
+  avali: `# आवली — KEYED LIST rendering: reorder/insert/remove reuse DOM nodes by key,
+# instead of rebuilding the whole list. Each row's identity (and any DOM state
+# it holds) survives shuffling — the hallmark of keyed reconciliation.
+
+भाव वस्तूनि = [
+    कोष{ कुं: १, नाम: "आम्रम्",   रंगः: "#e74c3c" },
+    कोष{ कुं: २, नाम: "कदलम्",   रंगः: "#f1c40f" },
+    कोष{ कुं: ३, नाम: "द्राक्षा", रंगः: "#9b59b6" },
+    कोष{ कुं: ४, नाम: "नारङ्गम्", रंगः: "#e67e22" }
+]।
+
+# Fisher–Yates-ish shuffle (deterministic-enough for a demo)
+कार्य विलोडय () {
+    चर पुरातन = वस्तूनि।
+    चर नूतन = []।
+    प्रत्येकम् (व : पुरातन) { नूतन.योजय(व)। }
+    # rotate by one: move first to last
+    चर प्रथमः = नूतन[०]।
+    चर शेषः = नूतन.खण्ड(१)।
+    शेषः.योजय(प्रथमः)।
+    वस्तूनि = शेषः।
+}
+
+चर मूलः = रचय मूलः रूप { अन्तरालः: "20px", पृष्ठभूमिः: "#f4f1ea", चौडाई: "260px" }।
+
+# the keyed list — keyed by कुं (stable id), so a shuffle MOVES rows
+चर सूचीपटः = आवली(
+    सूत्र(वस्तूनि),
+    कार्य(व){ फलम् व.कुं। },                       # key = stable id
+    कार्य(व){
+        फलम् रचय वाक्यः वाक्यम् पाठ"{व.कुं}. {व.नाम}"
+            रूप {
+                पृष्ठभूमिः: व.रंगः, वर्णः: श्वेतः, अन्तरालः: "12px 16px",
+                कोणवृत्तिः: "8px", बाह्यान्तरः: "6px 0", अक्षरभारः: गुरुः
+            }।
+    }
+)।
+मूलः.append(सूचीपटः)।
+
+मूलः.append(रचय पटः वाक्यम् "विलोडय (rotate)"
+    स्पर्शाय करणेन कार्य(){ विलोडय()। }
+    रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "10px 16px",
+           कोणवृत्तिः: "6px", सीमा: अदृश्यम्, cursor: "pointer", बाह्यान्तरः: "12px 0 0 0" })।
+
+योजय(मूलः)।
+`,
+  ghatak: `# घटकाः — COMPONENTS: reusable रचय-returning functions with props.
+# A component is just a कार्य that takes props and returns a रचय tree.
+# Static props pass by value; reactive props pass as सूत्र(cell) — explicit,
+# so you can SEE which inputs are live.
+
+# a reusable "stat card" component
+कार्य आँकडापत्रम् (शीर्षकम्, मूल्यसूत्रम्, वर्णः) {
+    फलम् रचय मूलः रूप {
+        पृष्ठभूमिः: श्वेतः, अन्तरालः: "14px 18px", कोणवृत्तिः: "10px",
+        बाह्यान्तरः: "8px", सीमा: "1px solid #eee", चौडाई: "150px"
+    } {
+        रचय शीर्षः वाक्यम् शीर्षकम्
+            रूप { वर्णः: धूसरः, अक्षरमानम्: "13px", बाह्यान्तरः: "0" }।
+        रचय वाक्यः वाक्यम् मूल्यसूत्रम्
+            रूप { वर्णः: वर्णः, अक्षरमानम्: "28px", अक्षरभारः: गुरुः, बाह्यान्तरः: "4px 0 0 0" }।
+    }।
+}
+
+# a button component taking a label and a click handler (callback prop)
+कार्य आवर्तकपटः (नाम, कर्म) {
+    फलम् रचय पटः वाक्यम् नाम
+        स्पर्शाय करणेन कर्म
+        रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "10px 16px",
+               कोणवृत्तिः: "6px", सीमा: अदृश्यम्, cursor: "pointer", बाह्यान्तरः: "8px 4px" }।
+}
+
+# --- compose them into an app ---
+भाव क्लिकाः = ०।
+भाव सेकण्डाः = ०।
+कालचक्र(कार्य(){ सेकण्डाः = सेकण्डाः + १। }, १०००)।
+
+चर मूलपटः = रचय मूलः रूप { अन्तरालः: "20px", पृष्ठभूमिः: "#f4f1ea" }।
+
+# reuse the SAME component three times with different props
+मूलपटः.append(आँकडापत्रम्("क्लिक्-सङ्ख्या", सूत्र(क्लिकाः), "navy"))।
+मूलपटः.append(आँकडापत्रम्("सेकण्ड-गणना", सूत्र(सेकण्डाः), "crimson"))।
+मूलपटः.append(आँकडापत्रम्("स्थिरम्", सूत्र(४२), "green"))।
+मूलपटः.append(आवर्तकपटः("क्लिक् कुरु", कार्य(){ क्लिकाः = क्लिकाः + १। }))।
+
+योजय(मूलपटः)।   # mount to the page root
+`,
+  flappy: `# विहगः — a Flappy-Bird-style game in Devabhāṣā.
+# Demonstrates a real-time game loop (कालचक्र), keyboard + click input
+# (कुञ्जिश्रोता / स्पर्श), in-place mutable state with reactive re-render, and
+# absolute-positioned DOM rendered from a single भाव state cell.
+
+भाव अवस्था = कोष{
+    उच्चता: १८०, वेगः: ०,
+    स्तम्भाः: [कोष{ x: ३२०, छिद्रम्: १४०, गणितम्: असत्यम् }],
+    अङ्कः: ०, जीवति: सत्यम्, आरब्धम्: असत्यम्
+}।
+
+नियत गुरुत्वम् = ०.५।
+नियत उड्डयनवेगः = ०-८।
+नियत भूमिः = ४३०।
+नियत छिद्रमानम् = १४०।
+
+कार्य नवस्तम्भः () {
+    फलम् कोष{ x: ३२०, छिद्रम्: ६० + गणित.अधःपातः(गणित.यादृच्छिकम्() * १८०), गणितम्: असत्यम् }।
+}
+
+कार्य नवावस्था () {
+    फलम् कोष{ उच्चता: १८०, वेगः: ०, स्तम्भाः: [नवस्तम्भः()], अङ्कः: ०, जीवति: सत्यम्, आरब्धम्: सत्यम् }।
+}
+
+कार्य उड्डयय () {
+    चर अ = अवस्था।
+    यदि (अ.जीवति == असत्यम्) { अवस्था = नवावस्था()। फलम् शून्यम्। }
+    अ.वेगः = उड्डयनवेगः।
+    अ.आरब्धम् = सत्यम्।
+    अवस्था = अ।
+}
+
+कार्य पदम् () {
+    चर अ = अवस्था।
+    यदि (अ.जीवति == असत्यम्) { फलम् शून्यम्। }
+    यदि (अ.आरब्धम् == असत्यम्) { फलम् शून्यम्। }
+    अ.वेगः = अ.वेगः + गुरुत्वम्।
+    अ.उच्चता = अ.उच्चता + अ.वेगः।
+    यदि (अ.उच्चता > भूमिः) { अ.जीवति = असत्यम्। अ.उच्चता = भूमिः। }
+    यदि (अ.उच्चता < ०) { अ.उच्चता = ०। अ.वेगः = ०। }
+    चर नूतनाः = []।
+    प्रत्येकम् (स : अ.स्तम्भाः) {
+        स.x = स.x - ३।
+        यदि (स.गणितम् == असत्यम्) {
+            यदि (स.x < ४५) { अ.अङ्कः = अ.अङ्कः + १। स.गणितम् = सत्यम्। }
+        }
+        यदि (स.x < ७५) {
+            यदि (स.x > १५) {
+                यदि (अ.उच्चता < स.छिद्रम्) { अ.जीवति = असत्यम्। }
+                यदि (अ.उच्चता > स.छिद्रम् + छिद्रमानम्) { अ.जीवति = असत्यम्। }
+            }
+        }
+        यदि (स.x > ०-६०) { नूतनाः.योजय(स)। }
+    }
+    यदि (नूतनाः.दीर्घता == ०) {
+        नूतनाः.योजय(नवस्तम्भः())।
+    } अन्यथा {
+        चर अन्तिमः = नूतनाः[नूतनाः.दीर्घता - १]।
+        यदि (अन्तिमः.x < १७०) { नूतनाः.योजय(नवस्तम्भः())। }
+    }
+    अ.स्तम्भाः = नूतनाः।
+    अवस्था = अ।
+}
+
+कालचक्र(पदम्, ३०)।
+कुञ्जिश्रोता(कार्य(कुं){ उड्डयय()। })।
+
+# build one pipe (top segment + bottom segment) at its x and gap
+कार्य स्तम्भचित्रम् (स) {
+    फलम् रचय मूलः {
+        रचय मूलः रूप {
+            स्थितिः: "absolute", पृष्ठभूमिः: हरितः, चौडाई: "50px",
+            वामतः: पाठ"{स.x}px", शीर्षात्: "0px", उच्चता: पाठ"{स.छिद्रम्}px"
+        }।
+        रचय मूलः रूप {
+            स्थितिः: "absolute", पृष्ठभूमिः: हरितः, चौडाई: "50px",
+            वामतः: पाठ"{स.x}px", शीर्षात्: पाठ"{स.छिद्रम् + १४०}px", अधस्तात्: "0px"
+        }।
+    }।
+}
+
+दृश्य {
+    रचय मूलः
+        स्पर्शाय करणेन कार्य(){ उड्डयय()। }
+        रूप {
+            पृष्ठभूमिः: "#70c5ce", चौडाई: "320px", उच्चता: "460px",
+            स्थितिः: "relative", cursor: "pointer", कोणवृत्तिः: "8px"
+        }
+    {
+        अवस्था.स्तम्भाः.प्रतिचित्रय(कार्य(स){ फलम् स्तम्भचित्रम्(स)। })।
+
+        रचय मूलः रूप {
+            स्थितिः: "absolute", चौडाई: "30px", उच्चता: "30px",
+            पृष्ठभूमिः: पीतः, कोणवृत्तिः: "50%",
+            वामतः: "45px", शीर्षात्: पाठ"{अवस्था.उच्चता}px"
+        }।
+
+        रचय शीर्षः वाक्यम् पाठ"{अवस्था.अङ्कः}"
+            रूप { वर्णः: श्वेतः, स्थितिः: "absolute", वामतः: "150px", शीर्षात्: "12px", अक्षरमानम्: "34px", अक्षरभारः: गुरुः }।
+
+        रचय वाक्यः वाक्यम् (अवस्था.जीवति ? "स्पृश वा कुञ्जीं नुद" : "मृतः! पुनः आरभस्व")
+            रूप { वर्णः: श्वेतः, स्थितिः: "absolute", वामतः: "60px", शीर्षात्: "220px", अक्षरभारः: गुरुः }।
+    }
+}
+`,
+  karaka: `# कारकम् — kāraka construction, FREE WORD ORDER
+# Roles come from CASE ENDINGS, not position:
+#   पटः (nom/कर्तृ)→tag   वाक्यम् (acc/कर्म)→content
+#   स्पर्शाय (dat)→event   करणेन (instr/करण)→handler
+# Reorder the arguments below — the output JS is identical.
+
+चर गणना = ०।
+कार्य वर्धक () {
+    गणना = गणना + १।
+    प्रदर्शनम्.textContent = "मानम्: " + गणना।
+}
+
+रचय शीर्षः वाक्यम् "कारक-गणकः"।
+चर प्रदर्शनम् = अङ्गम्("p", "मानम्: ०")।
+योजय(प्रदर्शनम्)।
+
+रचय  पटः  वाक्यम् "वर्धय"  स्पर्शाय  करणेन वर्धक।`,
+  tokenizer: `# शब्दविभाजकः — a tokenizer WRITTEN IN DEVABHĀṢĀ.
+# Bootstrapping proof: compiler machinery in the language itself,
+# using strings + objects + arrays.
+
+कार्य रिक्तः (अक्षरः) {
+    फलम् अक्षरः == " " || अक्षरः == "\\n"।
+}
+
+कार्य विभाजय (पाठः) {
+    चर परिणामः = []।
+    चर सञ्चयः = ""।
+    चर i = ०।
+    यावत् (i < पाठः.दीर्घता) {
+        चर अक्षरः = पाठः.अक्षरः(i)।
+        यदि (रिक्तः(अक्षरः)) {
+            यदि (सञ्चयः.दीर्घता > ०) {
+                परिणामः.योजय(कोष { प्रकार: "शब्दः", मूल्यम्: सञ्चयः })।
+                सञ्चयः = ""।
+            }
+        } अन्यथा {
+            सञ्चयः = सञ्चयः + अक्षरः।
+        }
+        i = i + १।
+    }
+    यदि (सञ्चयः.दीर्घता > ०) {
+        परिणामः.योजय(कोष { प्रकार: "शब्दः", मूल्यम्: सञ्चयः })।
+    }
+    फलम् परिणामः।
+}
+
+चर खण्डाः = विभाजय("नमस्ते जगत् सुन्दरम्")।
+दर्शय("शब्दसंख्या:", खण्डाः.दीर्घता)।
+प्रत्येकम् (खण्डः : खण्डाः) {
+    दर्शय("  ", खण्डः.प्रकार, "=", खण्डः.मूल्यम्)।
+}`
+};
+
+
+const $src = document.getElementById('src');
+const $out = document.getElementById('out');
+const $console = document.getElementById('console');
+const $stage = document.getElementById('stage');
+
+function transpile() {
+  try {
+    const js = window.__devabhasha.compile($src.value, { includeRuntime: false });
+    $out.textContent = js;
+    $out.style.color = '';
+    return js;
+  } catch (e) {
+    // show source-context error if it's a structured DevabhashaError
+    const msg = (window.__devabhasha.formatError && e && e.line != null)
+      ? window.__devabhasha.formatError(e, $src.value)
+      : e.message;
+    $out.textContent = msg;
+    $out.style.color = 'var(--vermilion-d)';
+    return null;
+  }
+}
+
+function run() {
+  $console.innerHTML = '';
+  $stage.innerHTML = '';
+  // stop any timers / key listeners left running from a previous run
+  if (window.__devaTimers) window.__devaTimers.forEach(id => clearInterval(id));
+  if (window.__devaKeys) window.__devaKeys.forEach(h => document.removeEventListener('keydown', h));
+  window.__devaTimers = [];
+  window.__devaKeys = [];
+  const js = transpile();
+  if (js == null) {
+    $console.innerHTML = '<span class="err">' + esc($out.textContent) + '</span>';
+    return;
+  }
+  // runtime that targets the #stage element and captures console.log
+  const runtime = `
+    const __root = document.getElementById('stage');
+    const __DB = {
+      el(tag, ...rest){ const n=document.createElement(tag);
+        for(const r of rest){ if(r==null)continue;
+          if(typeof r==='object'&&!(r instanceof Node)&&!Array.isArray(r)){
+            for(const[k,v]of Object.entries(r)){
+              if(k.startsWith('on')&&typeof v==='function')n.addEventListener(k.slice(2).toLowerCase(),v);
+              else if(k==='style'&&typeof v==='object')Object.assign(n.style,v);
+              else n.setAttribute(k,v);}}
+          else if(Array.isArray(r))r.forEach(c=>n.append(c instanceof Node?c:document.createTextNode(String(c))));
+          else n.append(r instanceof Node?r:document.createTextNode(String(r)));}
+        return n; },
+      mount(node,target){ const t=target?(typeof target==='string'?document.querySelector(target):target):__root; t.append(node); return node; },
+      listen(node,ev,h){ node.addEventListener(ev,h); return node; },
+      construct({tag,content,contentBind,event,handler,parent,prop,children,style,styleBind}){
+        const n=document.createElement(tag);
+        if(contentBind!=null){ n.append(__DB.bindText(contentBind)); }
+        else if(content!=null&&content.__isSutra){ n.append(__DB.bindText(content)); }
+        else if(content!=null){ if(Array.isArray(content))content.forEach(c=>n.append(c instanceof Node?c:document.createTextNode(String(c)))); else n.append(content instanceof Node?content:document.createTextNode(String(content))); }
+        // append children — DOM append MOVES nodes, so even auto-mounted
+        // child constructs get correctly re-parented into this element.
+        if(children){ const ap=c=>{ if(c==null)return; if(Array.isArray(c)){c.forEach(ap);return;} n.append(c instanceof Node?c:document.createTextNode(String(c))); }; for(const c of children)ap(c); }
+        if(style&&typeof style==='object')Object.assign(n.style,style);
+        if(styleBind&&typeof styleBind==='object')for(const[k,thunk]of Object.entries(styleBind))__DB.effect(()=>{ n.style[k]=thunk(); });
+        if(prop&&typeof prop==='object')for(const[k,v]of Object.entries(prop))n.setAttribute(k,v);
+        if(event&&handler)n.addEventListener(event,handler);
+        const t = parent!=null ? (typeof parent==='string'?document.querySelector(parent):parent) : __root;
+        (t||__root).append(n); return n;
+      },
+      _subStack:[],
+      _currentSub(){ return __DB._subStack.length ? __DB._subStack[__DB._subStack.length-1] : null; },
+      state(initial){ let value=initial; const subs=new Set();
+        const cell=(...a)=>{ if(a.length===0){ const s=__DB._currentSub(); if(s){subs.add(s); if(s.deps)s.deps.add(cell);} return value; }
+          if(a[0]===value&&(a[0]===null||typeof a[0]!=='object'))return value; value=a[0];
+          for(const s of Array.from(subs)){ if(typeof s==='function')s(); else if(s&&s.run)s.run(); } return value; };
+        cell.__isState=true; cell.__unsubscribe=(s)=>subs.delete(s); return cell; },
+      effect(fn){ const sub={ deps:new Set(), cleanups:[], run(){ for(const c of sub.cleanups){try{c();}catch(e){}} sub.cleanups=[]; for(const c of sub.deps)if(c.__unsubscribe)c.__unsubscribe(sub); sub.deps.clear(); __DB._subStack.push(sub); const pe=__DB._activeEffect; __DB._activeEffect=sub; try{fn();}finally{__DB._activeEffect=pe; __DB._subStack.pop();} } }; sub.run(); return sub; },
+      _activeEffect:null,
+      onCleanup(fn){ if(__DB._activeEffect)__DB._activeEffect.cleanups.push(fn); },
+      sutra(thunk){ thunk.__isSutra=true; return thunk; },
+      lazyImage(src,opts){ opts=opts||{}; const img=document.createElement('img'); if(opts.alt!=null)img.setAttribute('alt',opts.alt); if(opts.placeholder)img.setAttribute('src',opts.placeholder); img.setAttribute('data-src',src); img.setAttribute('loading','lazy'); const load=()=>{ if(img.getAttribute('src')!==src)img.setAttribute('src',src); }; if(typeof IntersectionObserver==='function'){ const io=new IntersectionObserver((es)=>{ for(const e of es){ if(e.isIntersecting){ load(); io.unobserve(img); } } },{rootMargin:opts.rootMargin||'200px'}); io.observe(img); } else { load(); } return img; },
+      keyedList(dataThunk,keyFn,renderFn){ const host=document.createElement('div'); host.style.display='contents'; let prev=new Map();
+        __DB.effect(()=>{ const items=dataThunk()||[]; const next=new Map(); const ordered=[];
+          items.forEach((item,i)=>{ const k=String(keyFn(item,i)); let node=prev.get(k); if(node===undefined)node=renderFn(item,i); next.set(k,node); ordered.push(node); });
+          for(const[k,node]of prev){ if(!next.has(k)&&node.parentNode===host)host.removeChild(node); }
+          let ref=null; for(let i=ordered.length-1;i>=0;i--){ const node=ordered[i]; if(node.nextSibling!==ref||node.parentNode!==host)host.insertBefore(node,ref); ref=node; } prev=next; });
+        return host; },
+      bindText(thunk){ const node=document.createTextNode(''); __DB.effect(()=>{ node.textContent=String(thunk()); }); return node; },
+      view(container,viewFn){ const host = container ? (typeof container==='string'?document.querySelector(container):container) : __root;
+        const render=()=>{ __DB._subStack.push(render); let out; try{ out=viewFn(); } finally{ __DB._subStack.pop(); }
+          host.innerHTML=''; const ap=c=>{ if(c==null)return; if(Array.isArray(c)){c.forEach(ap);return;} host.append(c instanceof Node?c:document.createTextNode(String(c))); }; ap(out); };
+        render(); return host; },
+      interval(fn,ms){ const id=setInterval(fn,ms); window.__devaTimers.push(id); return id; },
+      clearTimer(id){ clearInterval(id); },
+      onKey(fn){ const h=(e)=>{ fn(e.key); }; document.addEventListener('keydown',h); window.__devaKeys.push(h); return h; }
+    };
+    const console = { log: (...a)=>__log(...a) };
+  `;
+  const log = (...a) => {
+    const line = a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ');
+    $console.textContent += line + '\n';
+  };
+  try {
+    new Function('__log', runtime + '\n' + js)(log);
+  } catch (e) {
+    $console.innerHTML += '<span class="err">दोषः: ' + esc(e.message) + '</span>';
+  }
+}
+
+function esc(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+
+// ---------- example gallery (categorised) ----------
+const EX_GALLERY = [
+  { grp: 'मूलम्·basics', items: [
+    ['namaste', 'नमस्ते'], ['ganita', 'गणित'], ['sugar', 'मधुरचिह्नानि'] ] },
+  { grp: 'जाल·web', items: [
+    ['ganaka', 'गणकः'], ['karaka', 'कारकम्'], ['samasa', 'समासः'], ['rupa', 'रूपम्'], ['suchi', 'सूची'] ] },
+  { grp: 'सक्रिय·reactive', items: [
+    ['counter', 'गणकः'], ['ghatak', 'घटकाः'], ['avali', 'आवली'] ] },
+  { grp: 'अनुप्रयोग·apps', items: [
+    ['todo', 'कार्यसूची'], ['vyaya', 'व्ययपत्रम्'], ['blog', 'ब्लॉग्'], ['flappy', 'विहगः'] ] },
+  { grp: 'गूढ·advanced', items: [
+    ['tokenizer', 'शब्दविभाजकः'], ['empty', 'रिक्तम्'] ] },
+];
+
+const $examples = document.getElementById('examples');
+let $activeEx = null;
+EX_GALLERY.forEach(cat => {
+  const g = document.createElement('span');
+  g.className = 'ex-group';
+  const lbl = document.createElement('span'); lbl.className = 'grp'; lbl.textContent = cat.grp;
+  g.appendChild(lbl);
+  cat.items.forEach(([key, label]) => {
+    if (!EXAMPLES[key]) return;
+    const b = document.createElement('button');
+    b.textContent = label; b.dataset.ex = key; b.title = key;
+    b.addEventListener('click', () => {
+      $src.value = EXAMPLES[key];
+      if ($activeEx) $activeEx.classList.remove('active');
+      b.classList.add('active'); $activeEx = b;
+      transpile();
+      // on mobile, jump to source so the user sees what they loaded
+      if (window.matchMedia('(max-width: 860px)').matches) showTab('source');
+    });
+    g.appendChild(b);
+  });
+  $examples.appendChild(g);
+});
+
+// ---------- mobile tab switching ----------
+function showTab(name) {
+  document.querySelectorAll('main .pane').forEach(p =>
+    p.classList.toggle('is-active', p.dataset.pane === name));
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === name));
+}
+document.querySelectorAll('#tabs button').forEach(b =>
+  b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+// keep the header height in a CSS var so mobile panes size correctly
+function syncHeaderH() {
+  const h = (document.querySelector('header')?.offsetHeight || 0)
+          + (document.querySelector('.toolbar')?.offsetHeight || 0)
+          + (document.querySelector('.tabs')?.offsetHeight || 0)
+          + 96; /* controls + tab bar breathing room */
+  document.documentElement.style.setProperty('--header-h', h + 'px');
+}
+window.addEventListener('resize', syncHeaderH);
+syncHeaderH();
+
+// ---------- run / copy / live transpile ----------
+document.getElementById('run').addEventListener('click', () => {
+  run();
+  if (window.matchMedia('(max-width: 860px)').matches) {
+    // show stage if the program built DOM, else the console
+    showTab($stage.children.length ? 'stage' : 'console');
+  }
+});
+document.getElementById('copy').addEventListener('click', () => {
+  const js = window.__devabhasha.compile($src.value, { includeRuntime: true });
+  navigator.clipboard?.writeText(js);
+  const btn = document.getElementById('copy'); const t = btn.textContent;
+  btn.textContent = '✓ प्रतिलिपिता'; setTimeout(() => btn.textContent = t, 1200);
+});
+
+$src.addEventListener('input', transpile);
+$src.value = EXAMPLES.namaste;
+if ($examples.querySelector('[data-ex="namaste"]')) {
+  $examples.querySelector('[data-ex="namaste"]').classList.add('active');
+  $activeEx = $examples.querySelector('[data-ex="namaste"]');
+}
+transpile();
+
+</script>
+</body>
+</html>

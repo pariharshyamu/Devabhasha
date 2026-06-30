@@ -1,0 +1,50 @@
+# शब्दविभाजकः — a word tokenizer WRITTEN IN DEVABHĀṢĀ.
+#
+# This is the bootstrapping proof: a piece of compiler machinery (splitting
+# source text into word-tokens) expressed in the language itself, using the
+# new strings + objects + arrays. If this runs, the lexer can be self-hosted.
+#
+# It scans a string and produces an array of token-objects {प्रकार, मूल्यम्}
+# (type, value), treating spaces as separators and "#" as a comment marker.
+
+कार्य रिक्तः (अक्षरः) {
+    फलम् अक्षरः == " " || अक्षरः == "\n" || अक्षरः == "\t"।
+}
+
+कार्य विभाजय (पाठः) {
+    चर परिणामः = []।          # result token array
+    चर सञ्चयः = ""।            # current word accumulator
+    चर i = ०।
+
+    यावत् (i < पाठः.दीर्घता) {
+        चर अक्षरः = पाठः.अक्षरः(i)।
+
+        यदि (रिक्तः(अक्षरः)) {
+            # whitespace ends the current word, if any
+            यदि (सञ्चयः.दीर्घता > ०) {
+                परिणामः.योजय(कोष { प्रकार: "शब्दः", मूल्यम्: सञ्चयः })।
+                सञ्चयः = ""।
+            }
+        } अन्यथा {
+            सञ्चयः = सञ्चयः + अक्षरः।
+        }
+        i = i + १।
+    }
+
+    # flush the final word
+    यदि (सञ्चयः.दीर्घता > ०) {
+        परिणामः.योजय(कोष { प्रकार: "शब्दः", मूल्यम्: सञ्चयः })।
+    }
+
+    फलम् परिणामः।
+}
+
+# --- run it ---
+चर निवेशः = "नमस्ते जगत् सुन्दरम्"।
+चर खण्डाः = विभाजय(निवेशः)।
+
+दर्शय("शब्दसंख्या (token count):", खण्डाः.दीर्घता)।
+
+प्रत्येकम् (खण्डः : खण्डाः) {
+    दर्शय("  ", खण्डः.प्रकार, "=", खण्डः.मूल्यम्)।
+}

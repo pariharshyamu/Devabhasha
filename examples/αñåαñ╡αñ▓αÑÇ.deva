@@ -1,0 +1,45 @@
+# आवली — KEYED LIST rendering: reorder/insert/remove reuse DOM nodes by key,
+# instead of rebuilding the whole list. Each row's identity (and any DOM state
+# it holds) survives shuffling — the hallmark of keyed reconciliation.
+
+भाव वस्तूनि = [
+    कोष{ कुं: १, नाम: "आम्रम्",   रंगः: "#e74c3c" },
+    कोष{ कुं: २, नाम: "कदलम्",   रंगः: "#f1c40f" },
+    कोष{ कुं: ३, नाम: "द्राक्षा", रंगः: "#9b59b6" },
+    कोष{ कुं: ४, नाम: "नारङ्गम्", रंगः: "#e67e22" }
+]।
+
+# Fisher–Yates-ish shuffle (deterministic-enough for a demo)
+कार्य विलोडय () {
+    चर पुरातन = वस्तूनि।
+    चर नूतन = []।
+    प्रत्येकम् (व : पुरातन) { नूतन.योजय(व)। }
+    # rotate by one: move first to last
+    चर प्रथमः = नूतन[०]।
+    चर शेषः = नूतन.खण्ड(१)।
+    शेषः.योजय(प्रथमः)।
+    वस्तूनि = शेषः।
+}
+
+चर मूलः = रचय मूलः रूप { अन्तरालः: "20px", पृष्ठभूमिः: "#f4f1ea", चौडाई: "260px" }।
+
+# the keyed list — keyed by कुं (stable id), so a shuffle MOVES rows
+चर सूचीपटः = आवली(
+    सूत्र(वस्तूनि),
+    कार्य(व){ फलम् व.कुं। },                       # key = stable id
+    कार्य(व){
+        फलम् रचय वाक्यः वाक्यम् पाठ"{व.कुं}. {व.नाम}"
+            रूप {
+                पृष्ठभूमिः: व.रंगः, वर्णः: श्वेतः, अन्तरालः: "12px 16px",
+                कोणवृत्तिः: "8px", बाह्यान्तरः: "6px 0", अक्षरभारः: गुरुः
+            }।
+    }
+)।
+मूलः.append(सूचीपटः)।
+
+मूलः.append(रचय पटः वाक्यम् "विलोडय (rotate)"
+    स्पर्शाय करणेन कार्य(){ विलोडय()। }
+    रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "10px 16px",
+           कोणवृत्तिः: "6px", सीमा: अदृश्यम्, cursor: "pointer", बाह्यान्तरः: "12px 0 0 0" })।
+
+योजय(मूलः)।
