@@ -33,6 +33,14 @@
   ],
   "author": "Shyamu Parihar <pariharshyamu@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pariharshyamu/devabhasha.git"
+  },
+  "homepage": "https://github.com/pariharshyamu/devabhasha#readme",
+  "bugs": {
+    "url": "https://github.com/pariharshyamu/devabhasha/issues"
+  },
   "engines": {
     "node": ">=18"
   }
