@@ -24,6 +24,12 @@ ok('group shares style across elements',
 ok('plural composes inside a singular container',
    js('रचय मूलः { रचय वाक्याः { "x" "y" } }।')
      .match(/__DB\.construct\(\{ tag: "div".*constructGroup\(\{ tag: "p"/s) != null);
+// vowel-final (इ/ई/उ) tags pluralize via their true class forms → group
+ok('vowel-final पङ्क्तयः → li group',
+   js('रचय पङ्क्तयः { "a" "b" }।').includes('__DB.constructGroup({ tag: "li"'));
+ok('सूची > पङ्क्तयः → ul>li list',
+   js('रचय सूचीः { रचय पङ्क्तयः { "a" "b" } }।')
+     .match(/__DB\.construct\(\{ tag: "ul".*constructGroup\(\{ tag: "li"/s) != null);
 
 // ---------- behavioral (jsdom if present) ----------
 let JSDOM;
@@ -57,6 +63,14 @@ if (JSDOM) {
     const btns = body.querySelectorAll('button');
     ok('shared style applied to every element',
        btns.length === 2 && btns[0].style.color === 'navy' && btns[1].style.color === 'navy');
+  }
+  {
+    const body = run('योजय(रचय सूचीः { रचय पङ्क्तयः { "एकम्" "द्वे" "त्रीणि" } })।');
+    const ul = body.querySelector('ul');
+    ok('vowel-final list: ul wraps 3 li',
+       ul && ul.querySelectorAll('li').length === 3);
+    ok('vowel-final list: li text in order',
+       ul.children[0].textContent === 'एकम्' && ul.children[2].textContent === 'त्रीणि');
   }
   {
     const body = run('योजय(रचय पटः वाक्यम् "solo")।');

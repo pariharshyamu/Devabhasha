@@ -70,6 +70,40 @@ ok('ā-stem dative मालायै',   analyze('मालायै')?.karaka 
 ok('ā-stem locative मालायाम्', analyze('मालायाम्')?.karaka === KARAKA.ADHIKARANA);
 ok('ā-stem instr sg मालया',  analyze('मालया')?.karaka === KARAKA.KARANA);
 
+// --- vowel-final stems (इ/ई/उ): true nominative dual & plural ---------------
+// Their plurals aren't the generic स्+ाः; they're class-specific, and stem
+// recovery must land back on the pratipadika.
+const vowel = {
+  'सूच्यः':   ['सूची',    VACANA.BAHU], // ईकारान्त — नद्यः-type
+  'सूच्यौ':   ['सूची',    VACANA.DVI],
+  'पङ्क्तयः': ['पङ्क्ति', VACANA.BAHU], // इकारान्त — मतयः-type
+  'पङ्क्ती':  ['पङ्क्ति', VACANA.DVI],
+  'सेतवः':    ['सेतु',    VACANA.BAHU], // उकारान्त — शत्रवः-type (गुण)
+  'सेतू':     ['सेतु',    VACANA.DVI],
+};
+for (const [w, [stem, n]] of Object.entries(vowel)) {
+  const a = analyze(w);
+  ok('vowel-final ' + w,
+     a?.karaka === KARAKA.KARTR && a?.number === n && a?.stem === stem);
+}
+// established singular convention still flows through the generic matcher
+ok('सूचीः stays nom sg (convention)', analyze('सूचीः')?.number === VACANA.EKA
+   && analyze('सूचीः')?.stem === 'सूची');
+// the disambiguation guard: अकारान्त words ending in ्यः are NOT vowel plurals
+ok('वाक्यः stays अकारान्त nom sg',
+   analyze('वाक्यः')?.stem === 'वाक्य' && analyze('वाक्यः')?.number === VACANA.EKA);
+ok('काव्यः stays अकारान्त nom sg', analyze('काव्यः')?.stem === 'काव्य');
+
+// --- vowel-final plural drives the group semantic (the closed caveat) -------
+ok('पङ्क्तयः → li group',
+   norm('रचय पङ्क्तयः { "a" "b" }।').includes('__DB.constructGroup({ tag: "li"'));
+ok('सूची > पङ्क्तयः builds ul>li list',
+   /__DB\.construct\(\{ tag: "ul".*constructGroup\(\{ tag: "li"/s
+     .test(norm('रचय सूचीः { रचय पङ्क्तयः { "क" "ख" } }।')));
+ok('पङ्क्तिः singular stays one <li>',
+   norm('रचय पङ्क्तिः वाक्यम् "x"।').includes('__DB.construct({ tag: "li"')
+   && !norm('रचय पङ्क्तिः वाक्यम् "x"।').includes('constructGroup'));
+
 // --- describe(): full grammatical parse ------------------------------------
 {
   const d = describe('पटैः');
