@@ -107,10 +107,74 @@ const PARADIGMS = PARADIGM_TABLE
   })
   .sort((a, b) => b.end.length - a.end.length);
 
+// ── vowel-final stems (इकारान्त / ईकारान्त / उकारान्त) ──────────────────────
+//
+// The generic append-a-marker convention works for अकारान्त (consonant-final)
+// stems — पट + ाः → पटाः. It CANNOT produce the nominative dual/plural of a
+// vowel-final stem: सूची's plural is सूच्यः (not सूची+ाः), पङ्क्ति's is
+// पङ्क्तयः, सेतु's is सेतवः. And those surfaces are genuinely ambiguous by
+// suffix alone — वाक्यः (अकारान्त nom sg of वाक्य) also ends in ्यः — so they
+// cannot go in the generic suffix matcher without breaking अकारान्त words.
+//
+// The Pāṇinian resolution: declension class is LEXICAL — a property of the
+// प्रातिपदिक, not recoverable from the bare surface. So we tag each vowel-final
+// construction stem with its class, GENERATE its true nominative dual/plural
+// from that class, and index those exact forms for lookup BEFORE the generic
+// matcher. Only these specific stems' forms are indexed, so अकारान्त words are
+// untouched. The generic singular (सूचीः, पङ्क्तिः, सेतुः — the established
+// convention) keeps flowing through the generic matcher. Adding a vowel-final
+// tag = one row here.
+const VOWEL_STEMS = [
+  ['सूची',    'ii-f'], // ईकारान्त स्त्रीलिङ्ग (नदी-type) → ul
+  ['पङ्क्ति', 'i-f'],  // इकारान्त स्त्रीलिङ्ग  (मति-type) → li
+  ['सेतु',    'u-m'],  // उकारान्त पुंल्लिङ्ग   (शत्रु-type) → a/anchor
+];
+
+// Per-class generators of the NON-generic nominative dual/plural — the forms
+// the generic matcher can't build. `base` is the stem minus its final vowel
+// matra (सूची→सूच, पङ्क्ति→पङ्क्त, सेतु→सेत), left consonant-final. Each entry
+// is [ surfaceForm, vacana ].
+const NOMINAL_DECLENSION = {
+  'ii-f': base => [
+    [base + '्यः', VACANA.BAHU],  // सूच्यः   — nom pl (नद्यः-type)
+    [base + '्यौ', VACANA.DVI],   // सूच्यौ   — nom du (नद्यौ-type)
+  ],
+  'i-f': base => [
+    [base + 'यः', VACANA.BAHU],   // पङ्क्तयः — nom pl (मतयः-type)
+    [base + 'ी',  VACANA.DVI],    // पङ्क्ती  — nom du (मती-type)
+  ],
+  'u-m': base => [
+    [base + 'वः', VACANA.BAHU],   // सेतवः   — nom pl (गुण उ→अव, शत्रवः-type)
+    [base + 'ू',  VACANA.DVI],    // सेतू    — nom du (शत्रू-type)
+  ],
+};
+
+// surfaceForm → analysis. All are प्रथमा (kartr); only वचन varies.
+const VOWEL_FORMS = new Map();
+for (const [stem, cls] of VOWEL_STEMS) {
+  const base = stem.slice(0, -1);            // drop final vowel matra
+  for (const [form, number] of NOMINAL_DECLENSION[cls](base)) {
+    VOWEL_FORMS.set(form, {
+      stem,
+      case: VIBHAKTI.prathama.en,
+      karaka: KARAKA.KARTR,
+      number,
+      ending: form.slice(base.length),       // the class-specific tail
+      cls,
+      vibhakti: 'prathama',
+    });
+  }
+}
+
 // Detect: returns { stem, case, karaka, number, ending, cls, vibhakti } or
 // null if no case ending is found. `case` stays the English case name for
 // backward compatibility; `karaka` is what codegen/parser consume.
 export function analyze(word) {
+  // Exact vowel-final forms (सूच्यः, पङ्क्तयः …) win before the generic
+  // suffix matcher, which would otherwise mis-slice them.
+  const vowelHit = VOWEL_FORMS.get(word);
+  if (vowelHit) return { ...vowelHit };
+
   for (const row of PARADIGMS) {
     if (word.endsWith(row.end)) {
       const stem = word.slice(0, word.length - row.end.length);
