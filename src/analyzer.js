@@ -13,6 +13,7 @@ import { KEYWORDS } from './keywords.js';
 import { METHODS, PROPERTIES, MATH_CONSTANTS, GLOBALS } from './stdlib.js';
 import { STYLE_PROPS, STYLE_VALUES } from './style.js';
 import { TAG_STEMS, EVENT_STEMS } from './karaka-web.js';
+import { describe as describeKaraka } from './vibhakti.js';
 
 // ---- diagnostics ----
 // Returns an array of { line, col, endCol, message, severity } for a source.
@@ -101,10 +102,37 @@ export function wordAt(lineText, charIndex) {
 
 // ---- hover ----
 // Return a doc string for a Sanskrit word, or null if unknown.
+//
+// Known vocabulary (keywords, style/color words, math methods) wins first.
+// Otherwise, if the word is an INFLECTED form of a construction stem — a tag
+// like पटैः or an event like स्पर्शाय — we surface its full kāraka parse. We
+// deliberately gate this on the stem being known DOM vocabulary: an ordinary
+// word that merely happens to end in a case-like suffix (अपरिचितम्) is not a
+// kāraka and stays unknown.
 export function hover(word) {
   const it = VOCAB_BY_LABEL.get(word);
-  if (!it) return null;
-  return { label: word, detail: it.detail, doc: it.doc, kind: it.kind };
+  if (it) return { label: word, detail: it.detail, doc: it.doc, kind: it.kind };
+
+  const g = describeKaraka(word);
+  if (g && (TAG_STEMS[g.stem] || EVENT_STEMS[g.stem])) {
+    const meaning = TAG_STEMS[g.stem]
+      ? `<${TAG_STEMS[g.stem]}> element`
+      : `"${EVENT_STEMS[g.stem]}" event`;
+    return {
+      label: word,
+      detail: g.gloss,
+      doc: `${g.stem} — ${meaning}`,
+      kind: 'karaka',
+    };
+  }
+  return null;
+}
+
+// Full grammatical parse of an inflected noun (case, number, kāraka), or null.
+// Exposed for tooling and REPLs that want the analysis regardless of whether
+// the stem is DOM vocabulary.
+export function grammar(word) {
+  return describeKaraka(word);
 }
 
 export { VOCAB };

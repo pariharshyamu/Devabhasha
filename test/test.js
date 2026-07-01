@@ -2,7 +2,7 @@
 import { compile } from '../src/index.js';
 
 let pass = 0, fail = 0;
-function run(name, src, check) {
+function run(name, src, check, onError = null) {
   try {
     const logs = [];
     const js = compile(src, { includeRuntime: false });
@@ -11,7 +11,9 @@ function run(name, src, check) {
     if (ok) { pass++; console.log('  ✓ ' + name); }
     else { fail++; console.log('  ✗ ' + name + '  got: ' + JSON.stringify(logs)); }
   } catch (e) {
-    fail++; console.log('  ✗ ' + name + '  threw: ' + e.message);
+    // A test may expect a throw: onError(message) → true means it's a pass.
+    if (onError && onError(e.message)) { pass++; console.log('  ✓ ' + name); }
+    else { fail++; console.log('  ✗ ' + name + '  threw: ' + e.message); }
   }
 }
 
@@ -25,6 +27,12 @@ run('string concat', 'दर्शय("अ"+"आ")।', l => l[0] === 'अआ');
 run('devanagari digits', 'दर्शय(१०+५)।', l => l[0] === '15');
 run('nested function', 'कार्य व(क){यदि(क<२){फलम् १।}फलम् क*व(क-१)।} दर्शय(व(५))।', l => l[0] === '120');
 run('boolean + logic', 'दर्शय(सत्यम् && असत्यम्)।', l => l[0] === 'false');
+run('decimal number', 'दर्शय(२.५ + ०.५)।', l => l[0] === '3');
+run('exponent number', 'दर्शय(2.5E-1 * 4)।', l => l[0] === '1');
+run('malformed number rejected',
+    'दर्शय(१.२.३)।',
+    l => false,
+    e => /property name/.test(e));  // must throw a clear parse error
 
 console.log(`\n${pass} पास, ${fail} फेल`);
 process.exit(fail ? 1 : 0);

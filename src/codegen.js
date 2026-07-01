@@ -75,6 +75,11 @@ const __DB = {
   },
   mount(node, target) {
     const t = typeof target === 'string' ? document.querySelector(target) : (target || document.body);
+    // a बहुवचन group is an array of nodes → append each
+    if (Array.isArray(node)) {
+      node.forEach(n => t.append(n instanceof Node ? n : document.createTextNode(String(n))));
+      return node;
+    }
     t.append(node);
     return node;
   },
@@ -124,6 +129,25 @@ const __DB = {
       (t || document.body).append(node);
     }
     return node;
+  },
+
+  // बहुवचन (plural) construction: distribute one element per समास child,
+  // each child becoming that element's content, all sharing the remaining
+  // kāraka slots (event/handler/prop/style). Returns an ARRAY of nodes — a
+  // "group" that flattens into any parent (समास child arrays are flattened,
+  // and mount/append handle arrays), so it composes exactly like a single
+  // element. e.g.  रचय पटाः रूप { वर्णः: नील } { "एक" "द्वि" }  → two blue
+  // <button>s labelled एक / द्वि.
+  constructGroup(spec) {
+    const { children, content, contentBind, ...shared } = spec;
+    const items = [];
+    const collect = c => {
+      if (c == null) return;
+      if (Array.isArray(c)) { c.forEach(collect); return; }
+      items.push(c);
+    };
+    (children || []).forEach(collect);
+    return items.map(child => __DB.construct({ ...shared, content: child }));
   },
 
   // ----- reactivity -----
@@ -670,7 +694,10 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
       case 'Construct': {
         // Assemble from role slots; order in source is irrelevant.
         const s = node.slots;
-        emit('__DB.construct({ tag: ');
+        // बहुवचन कर्तृ → constructGroup: the tag distributes over the समास
+        // children (one element per child), sharing the other kāraka slots.
+        // Returns an array of nodes. Same slot syntax, different builder.
+        emit(node.plural ? '__DB.constructGroup({ tag: ' : '__DB.construct({ tag: ');
         genExpr(s.tag);
         if (s.content) {
           if (!inView && readsState(s.content)) {

@@ -64,12 +64,33 @@ export function tokenize(src) {
       continue;
     }
 
-    // numbers (supports Devanagari digits and decimals)
+    // numbers (Devanagari or ASCII digits; one decimal point; optional
+    // exponent e.g. 1e3, 2.5E-4). A second '.' or a bare exponent is left
+    // for the next token rather than silently folded into a malformed number,
+    // so 1.2.3 becomes NUMBER(1.2) '.' NUMBER(3) and fails at parse time
+    // instead of emitting invalid JS.
     if (isDigit(ch)) {
       let num = '';
-      while (i < src.length && (isDigit(src[i]) || src[i] === '.')) {
-        num += normalizeDigit(src[i]);
-        advance();
+      let seenDot = false, seenExp = false;
+      while (i < src.length) {
+        const c = src[i];
+        if (isDigit(c)) { num += normalizeDigit(c); advance(); continue; }
+        // decimal point: only once, only before any exponent, only if a
+        // digit follows (so member access on a number stays a separate '.').
+        if (c === '.' && !seenDot && !seenExp && isDigit(src[i + 1])) {
+          seenDot = true; num += '.'; advance(); continue;
+        }
+        // exponent: e/E, optional sign, then at least one digit.
+        if ((c === 'e' || c === 'E') && !seenExp) {
+          const signLen = (src[i + 1] === '+' || src[i + 1] === '-') ? 1 : 0;
+          if (isDigit(src[i + 1 + signLen])) {
+            seenExp = true;
+            num += 'e'; advance();
+            if (signLen) { num += src[i]; advance(); }
+            continue;
+          }
+        }
+        break;
       }
       push('NUMBER', num);
       continue;

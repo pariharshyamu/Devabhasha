@@ -78,12 +78,68 @@ The seven recognized cases and their kāraka roles:
 | षष्ठी genitive `-स्य` | सम्बन्ध relation | attribute |
 | सप्तमी locative `-े` | अधिकरण locus | mount parent |
 
-**Scope (honest):** the case engine (`src/vibhakti.js`) implements the
-a-stem (अकारान्त) singular paradigm — the most common declension, covering
-most coined technical vocabulary. Other stem-classes and genders extend it
-by adding rows to the paradigm table. ASCII words and uninflected stems are
-correctly *not* treated as case-marked, which is what keeps free word order
-parseable.
+### वचन — number (singular · dual · plural)
+
+The case engine (`src/vibhakti.js`) parses all three **वचन (numbers)** across
+the seven विभक्ति, not just the singular. The role (kāraka) is number-invariant
+— `पटः`, `पटौ`, `पटाः` are all कर्तृ (the element tag) — but the parse records
+which वचन you wrote:
+
+| वचन | nominative | accusative | instrumental | genitive |
+|-----|-----------|-----------|--------------|----------|
+| एकवचन singular | `पटः` | `पटम्` | `पटेन` | `पटस्य` |
+| द्विवचन dual | `पटौ` | `पटौ` | `पटाभ्याम्` | `पटयोः` |
+| बहुवचन plural | `पटाः` | `पटान्` | `पटैः` | `पटानाम्` |
+
+`analyze(word)` returns `{ stem, case, karaka, number, vibhakti, cls }`, and
+`describe(word)` gives a full gloss — e.g. `describe('पटैः')` →
+*"तृतीया बहुवचन — instrumental plural (करण-कारक)"*. The editor surfaces this
+on hover for any inflected form of the construction vocabulary (`पटैः` hovers
+as *instrumental plural, `<button>` element*).
+
+#### बहुवचन → element groups
+
+Number is not just recorded — a **plural कर्तृ (nominative tag) builds a group**.
+The tag *distributes* over the समास children: one element per child, each child
+as that element's content, all sharing the remaining kāraka slots (style,
+handler, event, attributes). Singular builds one element; plural builds many:
+
+```
+रचय पटः वाक्यम् "क्लिक्"।        # singular → one <button>क्लिक्</button>
+
+रचय पटाः रूप { वर्णः: नीलः } {    # plural → a GROUP of <button>s,
+    "एक"                          #   each blue, one per child:
+    "द्वि"                        #   <button style=…>एक</button>
+    "त्रि"                        #   <button style=…>द्वि</button>
+}                                 #   <button style=…>त्रि</button>
+```
+
+A group is an array of nodes that flattens into any parent, so it composes
+exactly like a single element — a plural inside a container just yields
+siblings:
+
+```
+रचय मूलः { रचय वाक्याः { "x" "y" } }   →   <div><p>x</p><p>y</p></div>
+```
+
+It compiles to `__DB.constructGroup({ tag, children, … })`. Because the plural
+markers append cleanly to **अकारान्त (consonant-final)** stems, this works out
+of the box for `पट`→button, `मूल`→div, `वाक्य`→p, `शीर्ष`→h1 (`पटाः`, `मूलाः`,
+`वाक्याः`, `शीर्षाः`). Vowel-final tags (`सूची`, `पङ्क्ति`) don't take the
+generic plural marker; for *data-driven* lists use the reactive
+`सूची-दत्तांश` / `.प्रतिचित्रय` map rendering instead — plural groups are the
+concise form for *static* homogeneous element groups.
+
+**Scope (honest):** beyond the generic अकारान्त-style role markers (which the
+append-a-marker convention lets serve *every* stem for the common cases), the
+engine also recognises the genuinely class-specific **आकारान्त feminine**
+obliques (`मालायै`, `मालायाम्`, `मालया` …) and the **णत्व** retroflex
+instrumental (`रामेण` alongside `पटेन`), so hand-written classical Sanskrit is
+understood too. Syncretic endings (Sanskrit reuses one form for several cells)
+resolve to the most construction-useful reading — documented on each row in
+`vibhakti.js`. Further stem-classes (इकारान्त, उकारान्त …) extend it by adding
+rows to `PARADIGM_TABLE`. ASCII words and uninflected stems are correctly
+*not* treated as case-marked, which is what keeps free word order parseable.
 
 Tag and event vocabulary lives in `src/karaka-web.js` (`पट`→button,
 `शीर्ष`→h1, `स्पर्श`→click, …).
