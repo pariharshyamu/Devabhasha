@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No dependencies — the compiler is dependency-free — so no install step.
+      - name: Run test suite
+        run: npm test
+
+      # Guard the self-hosting bootstrap explicitly: the byte-for-byte
+      # fixpoint is the project's headline correctness property.
+      - name: Verify self-hosting fixpoint
+        run: node test/fixpoint.test.js
+
+  filenames:
+    name: filenames are clean UTF-8 (no mojibake)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # CP437 mojibake once corrupted the Devanagari filenames; fail CI if a
+      # tracked path carries Greek/box-drawing glyphs from that corruption.
+      # Done in Node so the Unicode ranges match regardless of shell locale.
+      - name: Check for mojibake filenames
+        run: |
+          node -e '
+            const { execSync } = require("node:child_process");
+            const files = execSync("git ls-files", { encoding: "utf8" }).split("\n").filter(Boolean);
+            const MOJIBAKE = /[Ͱ-Ͽ─-▟]/;
+            const bad = files.filter(f => MOJIBAKE.test(f));
+            if (bad.length) { console.error("Mojibake filenames detected:\n" + bad.join("\n")); process.exit(1); }
+            console.log("All " + files.length + " tracked filenames are clean.");
+          '
