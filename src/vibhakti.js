@@ -1,16 +1,26 @@
 // vibhakti.js — the kāraka/case engine.
 //
-// Given an inflected Devanagari noun, detect its vibhakti (case ending),
-// recover the stem, and map the case to a kāraka (semantic role).
+// Given an inflected Devanagari noun, detect its विभक्ति (case ending) and
+// वचन (number), recover the प्रातिपदिक (stem), and map the case to a कारक
+// (semantic role). This is the morphological core behind रचय's free word
+// order: a word's role comes from its ending, not its position.
 //
-// SCOPE (honest): full Sanskrit declension is stem-class- and gender-
-// dependent and very large. We implement the अकारान्त पुंल्लिङ्ग/नपुंसकलिङ्ग
-// (a-stem masc/neut) singular paradigm robustly — this covers the great
-// majority of coined technical vocabulary — plus a particle-style escape
-// hatch. Extending to other stems = adding rows to PARADIGMS.
+// DESIGN. Devabhāṣā's surface convention is Pāṇinian but pragmatic: a
+// role-marker (the सुप् ending) is appended to the प्रातिपदिक — पट + ः → पटः,
+// सूची + ः → सूचीः — rather than running full class-specific सन्धि. That single
+// convention lets one paradigm serve every stem for the common cases. On top
+// of it we also recognise the genuinely class-specific oblique forms (the
+// आकारान्त feminine singular, the णत्व instrumental) so hand-written classical
+// Sanskrit is understood too.
+//
+// SCOPE. All three वचन (एक/द्वि/बहु — singular/dual/plural) across the seven
+// विभक्ति, for the generic अकारान्त-style paradigm, plus आकारान्त feminine
+// obliques and णत्व. Syncretic forms (Sanskrit reuses one ending for several
+// cells) resolve to the most construction-useful reading; see SYNCRETISM
+// notes on the rows. Extending further = adding rows to PARADIGM_TABLE.
 
 // The six kārakas + two non-kāraka relations we also accept (sambandha =
-// genitive "of", which is structurally useful for property access).
+// genitive "of", structurally useful for property access).
 export const KARAKA = {
   KARTR:      'kartr',       // agent      — nominative   (प्रथमा)
   KARMAN:     'karman',      // patient    — accusative   (द्वितीया)
@@ -21,49 +31,102 @@ export const KARAKA = {
   ADHIKARANA: 'adhikarana',  // locus      — locative     (सप्तमी)
 };
 
-// a-stem singular endings (after the stem, which ends in the inherent 'अ').
-// We express each ending as the sequence that REPLACES the stem-final 'अ'.
-// Written in Devanagari as the surface suffix on a consonant-final stem.
-// Example stem: रक्त (rakta) → रक्तः (nom), रक्तम् (acc), रक्तेन (instr)…
-//
-// We store endings as the trailing string of the FULL word so the matcher
-// can do longest-suffix matching. Order longest-first.
-const A_STEM_SINGULAR = [
-  // [ surface ending, case, kāraka,  stemEndsWith ]
-  // The stem is recovered by removing `ending` and restoring final 'अ'
-  // where the paradigm fuses it.
-  { end: 'स्मिन्', case: 'locative',     karaka: KARAKA.ADHIKARANA, restore: 'अ' }, // rare pronominal; keep before others
-  { end: 'ेषु',   case: 'locative_pl',  karaka: KARAKA.ADHIKARANA, restore: 'अ' },
-  { end: 'ेन',    case: 'instrumental', karaka: KARAKA.KARANA,      restore: 'अ' }, // रक्तेन
-  { end: 'ाय',    case: 'dative',       karaka: KARAKA.SAMPRADANA,  restore: 'अ' }, // रक्ताय
-  { end: 'ात्',   case: 'ablative',     karaka: KARAKA.APADANA,     restore: 'अ' }, // रक्तात्
-  { end: 'स्य',   case: 'genitive',     karaka: KARAKA.SAMBANDHA,   restore: 'अ' }, // रक्तस्य
-  { end: 'े',     case: 'locative',     karaka: KARAKA.ADHIKARANA,  restore: 'अ' }, // रक्ते
-  { end: 'म्',    case: 'accusative',   karaka: KARAKA.KARMAN,      restore: 'अ' }, // रक्तम्
-  { end: 'ः',     case: 'nominative',   karaka: KARAKA.KARTR,       restore: 'अ' }, // रक्तः
+// वचन — grammatical number.
+export const VACANA = {
+  EKA:  'ekavacana',   // एकवचन  — singular
+  DVI:  'dvivacana',   // द्विवचन — dual
+  BAHU: 'bahuvacana',  // बहुवचन — plural
+};
+
+export const VACANA_NAME_SA = {
+  [VACANA.EKA]:  'एकवचन',
+  [VACANA.DVI]:  'द्विवचन',
+  [VACANA.BAHU]: 'बहुवचन',
+};
+
+// The seven declensional विभक्ति, each tied to its kāraka. (सम्बोधन/vocative
+// is an आमन्त्रण, not a kāraka, and its singular is the bare stem — which we
+// deliberately do NOT treat as case-marked — so it is not listed here.)
+export const VIBHAKTI = {
+  prathama: { n: 1, sa: 'प्रथमा',  en: 'nominative',   karaka: KARAKA.KARTR },
+  dvitiya:  { n: 2, sa: 'द्वितीया', en: 'accusative',   karaka: KARAKA.KARMAN },
+  trtiya:   { n: 3, sa: 'तृतीया',   en: 'instrumental', karaka: KARAKA.KARANA },
+  caturthi: { n: 4, sa: 'चतुर्थी',  en: 'dative',       karaka: KARAKA.SAMPRADANA },
+  panchami: { n: 5, sa: 'पञ्चमी',   en: 'ablative',     karaka: KARAKA.APADANA },
+  shashthi: { n: 6, sa: 'षष्ठी',    en: 'genitive',     karaka: KARAKA.SAMBANDHA },
+  saptami:  { n: 7, sa: 'सप्तमी',   en: 'locative',     karaka: KARAKA.ADHIKARANA },
+};
+
+// The paradigm table. Each row: [ ending, vibhaktiKey, vacana, stemClass ].
+// `stemClass` is informational (which declension the surface form belongs to).
+// Rows are flattened and sorted longest-ending-first so the matcher does
+// unambiguous longest-suffix matching; where two cells share an ending
+// (Sanskrit syncretism) the comment marks the chosen reading.
+const PARADIGM_TABLE = [
+  // ── generic (अकारान्त-style role markers), एकवचन — the original set ──────
+  ['स्मिन्', 'saptami',  VACANA.EKA,  'pronominal'], // rare pronominal loc.; keep first
+  ['ेन',    'trtiya',   VACANA.EKA,  'a'],          // पटेन
+  ['ेण',    'trtiya',   VACANA.EKA,  'a'],          // रामेण — णत्व (retroflex) variant
+  ['ाय',    'caturthi', VACANA.EKA,  'a'],          // पटाय
+  ['ात्',   'panchami', VACANA.EKA,  'a'],          // पटात्
+  ['स्य',   'shashthi', VACANA.EKA,  'a'],          // पटस्य
+  ['े',     'saptami',  VACANA.EKA,  'a'],          // पटे
+  ['म्',    'dvitiya',  VACANA.EKA,  'a'],          // पटम्
+  ['ः',     'prathama', VACANA.EKA,  'any'],        // पटः / सूचीः / पङ्क्तिः
+
+  // ── द्विवचन (dual) ──────────────────────────────────────────────────────
+  ['ाभ्याम्','trtiya',   VACANA.DVI,  'a'],  // SYNCRETISM ins/dat/abl du → instrumental
+  ['योः',   'shashthi', VACANA.DVI,  'a'],  // SYNCRETISM gen/loc du → genitive
+  ['ौ',     'prathama', VACANA.DVI,  'a'],  // SYNCRETISM nom/acc du → nominative
+
+  // ── बहुवचन (plural) ─────────────────────────────────────────────────────
+  ['ानाम्', 'shashthi', VACANA.BAHU, 'a'],  // पटानाम्
+  ['ेभ्यः', 'caturthi', VACANA.BAHU, 'a'],  // SYNCRETISM dat/abl pl → dative
+  ['ेषु',   'saptami',  VACANA.BAHU, 'a'],  // पटेषु
+  ['ैः',    'trtiya',   VACANA.BAHU, 'a'],  // पटैः
+  ['ान्',   'dvitiya',  VACANA.BAHU, 'a'],  // पटान्
+  ['ानि',   'prathama', VACANA.BAHU, 'a-n'],// तत्त्वानि — neuter nom/acc pl → nominative
+  ['ाः',    'prathama', VACANA.BAHU, 'a'],  // पटाः — nom pl (also ā-stem nom/acc pl)
+
+  // ── आकारान्त स्त्रीलिङ्ग (ā-stem feminine) obliques — classical forms ─────
+  ['ायाम्', 'saptami',  VACANA.EKA,  'aa'], // मालायाम्
+  ['ायाः',  'shashthi', VACANA.EKA,  'aa'], // SYNCRETISM abl/gen sg → genitive
+  ['ायै',   'caturthi', VACANA.EKA,  'aa'], // मालायै
+  ['ाभिः',  'trtiya',   VACANA.BAHU, 'aa'], // मालाभिः
+  ['ाभ्यः', 'caturthi', VACANA.BAHU, 'aa'], // SYNCRETISM dat/abl pl → dative
+  ['ासु',   'saptami',  VACANA.BAHU, 'aa'], // मालासु
+  ['ाम्',   'dvitiya',  VACANA.EKA,  'aa'], // मालाम् — acc sg
+  ['या',    'trtiya',   VACANA.EKA,  'aa'], // मालया — instr sg
 ];
 
-// Virama / halant and the inherent vowel handling.
-const VIRAMA = '\u094D';
-const INHERENT = 'अ';
+// Flatten to matcher rows, resolving vibhakti→karaka, sorted longest-first.
+const PARADIGMS = PARADIGM_TABLE
+  .map(([end, vibhaktiKey, vacana, cls]) => {
+    const v = VIBHAKTI[vibhaktiKey];
+    return { end, vibhaktiKey, case: v.en, karaka: v.karaka, number: vacana, cls };
+  })
+  .sort((a, b) => b.end.length - a.end.length);
 
-// Some words are written with an explicit final consonant+virama in the
-// stem (e.g. अङ्गम् the keyword). For nominal arguments we expect the
-// surface forms above.
-
-// Detect: returns { stem, case, karaka } or null if no case ending found.
+// Detect: returns { stem, case, karaka, number, ending, cls, vibhakti } or
+// null if no case ending is found. `case` stays the English case name for
+// backward compatibility; `karaka` is what codegen/parser consume.
 export function analyze(word) {
-  for (const row of A_STEM_SINGULAR) {
+  for (const row of PARADIGMS) {
     if (word.endsWith(row.end)) {
-      let stem = word.slice(0, word.length - row.end.length);
-      // The a-stem fuses the stem-final inherent 'अ' with the ending.
-      // After stripping the ending, `stem` ends in a bare consonant
-      // (no virama shown because the inherent vowel was consumed by the
-      // ending). We restore the citation form by appending nothing —
-      // the consonant already implies 'अ' in Devanagari. So `stem` IS
-      // the dictionary stem in surface form.
+      const stem = word.slice(0, word.length - row.end.length);
+      // A bare stem (nothing before the ending) is not a case-marked word;
+      // neither is a lone ending. This is what keeps uninflected stems and
+      // ASCII words correctly OUT of the kāraka machinery.
       if (stem.length === 0) continue;
-      return { stem, case: row.case, karaka: row.karaka, ending: row.end };
+      return {
+        stem,
+        case: row.case,
+        karaka: row.karaka,
+        number: row.number,
+        ending: row.end,
+        cls: row.cls,
+        vibhakti: row.vibhaktiKey,
+      };
     }
   }
   return null;
@@ -73,6 +136,32 @@ export function analyze(word) {
 export function karakaOf(word) {
   const a = analyze(word);
   return a ? a.karaka : null;
+}
+
+// For diagnostics / hover / REPL: a full grammatical parse of an inflected
+// noun, or null. e.g. describe('पटैः') →
+//   { word, stem:'पट', vibhakti:'तृतीया', case:'instrumental',
+//     vacana:'बहुवचन', number:'bahuvacana', karaka:'karana',
+//     karakaSa:'करण', gloss:'तृतीया बहुवचन — instrumental plural (करण-कारक)' }
+export function describe(word) {
+  const a = analyze(word);
+  if (!a) return null;
+  const v = VIBHAKTI[a.vibhakti];
+  const vacanaSa = VACANA_NAME_SA[a.number];
+  const numberEn = a.number === VACANA.EKA ? 'singular'
+                 : a.number === VACANA.DVI ? 'dual' : 'plural';
+  const karakaSa = KARAKA_NAME_SA[a.karaka];
+  return {
+    word,
+    stem: a.stem,
+    vibhakti: v.sa,
+    case: v.en,
+    vacana: vacanaSa,
+    number: a.number,
+    karaka: a.karaka,
+    karakaSa,
+    gloss: `${v.sa} ${vacanaSa} — ${v.en} ${numberEn} (${karakaSa}-कारक)`,
+  };
 }
 
 // For diagnostics / REPL: pretty Sanskrit name of a kāraka.

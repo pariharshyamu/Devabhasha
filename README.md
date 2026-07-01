@@ -78,12 +78,38 @@ The seven recognized cases and their kāraka roles:
 | षष्ठी genitive `-स्य` | सम्बन्ध relation | attribute |
 | सप्तमी locative `-े` | अधिकरण locus | mount parent |
 
-**Scope (honest):** the case engine (`src/vibhakti.js`) implements the
-a-stem (अकारान्त) singular paradigm — the most common declension, covering
-most coined technical vocabulary. Other stem-classes and genders extend it
-by adding rows to the paradigm table. ASCII words and uninflected stems are
-correctly *not* treated as case-marked, which is what keeps free word order
-parseable.
+### वचन — number (singular · dual · plural)
+
+The case engine (`src/vibhakti.js`) parses all three **वचन (numbers)** across
+the seven विभक्ति, not just the singular. The role (kāraka) is number-invariant
+— `पटः`, `पटौ`, `पटाः` are all कर्तृ (the element tag) — but the parse records
+which वचन you wrote:
+
+| वचन | nominative | accusative | instrumental | genitive |
+|-----|-----------|-----------|--------------|----------|
+| एकवचन singular | `पटः` | `पटम्` | `पटेन` | `पटस्य` |
+| द्विवचन dual | `पटौ` | `पटौ` | `पटाभ्याम्` | `पटयोः` |
+| बहुवचन plural | `पटाः` | `पटान्` | `पटैः` | `पटानाम्` |
+
+`analyze(word)` returns `{ stem, case, karaka, number, vibhakti, cls }`, and
+`describe(word)` gives a full gloss — e.g. `describe('पटैः')` →
+*"तृतीया बहुवचन — instrumental plural (करण-कारक)"*. The editor surfaces this
+on hover for any inflected form of the construction vocabulary (`पटैः` hovers
+as *instrumental plural, `<button>` element*). DOM construction is currently
+number-agnostic (a plural tag builds the same element as a singular one) —
+attaching semantics to वचन (e.g. बहुवचन ⇒ a repeated element group) is a
+clean, documented next step.
+
+**Scope (honest):** beyond the generic अकारान्त-style role markers (which the
+append-a-marker convention lets serve *every* stem for the common cases), the
+engine also recognises the genuinely class-specific **आकारान्त feminine**
+obliques (`मालायै`, `मालायाम्`, `मालया` …) and the **णत्व** retroflex
+instrumental (`रामेण` alongside `पटेन`), so hand-written classical Sanskrit is
+understood too. Syncretic endings (Sanskrit reuses one form for several cells)
+resolve to the most construction-useful reading — documented on each row in
+`vibhakti.js`. Further stem-classes (इकारान्त, उकारान्त …) extend it by adding
+rows to `PARADIGM_TABLE`. ASCII words and uninflected stems are correctly
+*not* treated as case-marked, which is what keeps free word order parseable.
 
 Tag and event vocabulary lives in `src/karaka-web.js` (`पट`→button,
 `शीर्ष`→h1, `स्पर्श`→click, …).
