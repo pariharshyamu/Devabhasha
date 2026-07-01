@@ -80,10 +80,16 @@ ok('ā-stem instr sg मालया',  analyze('मालया')?.karaka === K
   ok('describe non-noun → null', describe('नील') === null);
 }
 
-// --- a plural/dual tag still resolves to the same element in रचय -----------
-ok('पटाः → button (number-agnostic tag)', norm('रचय पटाः।').includes('"button"'));
-ok('पटौ → button',  norm('रचय पटौ।').includes('"button"'));
-ok('plural tag == singular tag JS', norm('रचय पटाः।') === norm('रचय पटः।'));
+// --- वचन DOM semantic: बहुवचन कर्तृ builds an element GROUP ------------------
+// A plural tag resolves to the same tag, but distributes over the समास
+// children via constructGroup (one element per child); dual/singular stay a
+// single-element __DB.construct.
+ok('पटाः → button tag',        norm('रचय पटाः { "a" "b" }।').includes('tag: "button"'));
+ok('plural → constructGroup',  norm('रचय पटाः { "a" "b" }।').includes('__DB.constructGroup('));
+ok('singular → construct',     norm('रचय पटः वाक्यम् "a"।').includes('__DB.construct('));
+ok('singular not a group',     !norm('रचय पटः वाक्यम् "a"।').includes('constructGroup'));
+ok('dual stays single element',norm('रचय पटौ।').includes('__DB.construct(') && !norm('रचय पटौ।').includes('constructGroup'));
+ok('plural shares style',      norm('रचय पटाः रूप { वर्णः: नीलः } { "a" }।').includes('__DB.constructGroup') );
 
 // --- hover surfaces the kāraka parse for inflected DOM vocabulary ----------
 ok('hover inflected tag', /instrumental plural/.test(hover('पटैः')?.detail || ''));

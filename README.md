@@ -95,10 +95,40 @@ which वचन you wrote:
 `describe(word)` gives a full gloss — e.g. `describe('पटैः')` →
 *"तृतीया बहुवचन — instrumental plural (करण-कारक)"*. The editor surfaces this
 on hover for any inflected form of the construction vocabulary (`पटैः` hovers
-as *instrumental plural, `<button>` element*). DOM construction is currently
-number-agnostic (a plural tag builds the same element as a singular one) —
-attaching semantics to वचन (e.g. बहुवचन ⇒ a repeated element group) is a
-clean, documented next step.
+as *instrumental plural, `<button>` element*).
+
+#### बहुवचन → element groups
+
+Number is not just recorded — a **plural कर्तृ (nominative tag) builds a group**.
+The tag *distributes* over the समास children: one element per child, each child
+as that element's content, all sharing the remaining kāraka slots (style,
+handler, event, attributes). Singular builds one element; plural builds many:
+
+```
+रचय पटः वाक्यम् "क्लिक्"।        # singular → one <button>क्लिक्</button>
+
+रचय पटाः रूप { वर्णः: नीलः } {    # plural → a GROUP of <button>s,
+    "एक"                          #   each blue, one per child:
+    "द्वि"                        #   <button style=…>एक</button>
+    "त्रि"                        #   <button style=…>द्वि</button>
+}                                 #   <button style=…>त्रि</button>
+```
+
+A group is an array of nodes that flattens into any parent, so it composes
+exactly like a single element — a plural inside a container just yields
+siblings:
+
+```
+रचय मूलः { रचय वाक्याः { "x" "y" } }   →   <div><p>x</p><p>y</p></div>
+```
+
+It compiles to `__DB.constructGroup({ tag, children, … })`. Because the plural
+markers append cleanly to **अकारान्त (consonant-final)** stems, this works out
+of the box for `पट`→button, `मूल`→div, `वाक्य`→p, `शीर्ष`→h1 (`पटाः`, `मूलाः`,
+`वाक्याः`, `शीर्षाः`). Vowel-final tags (`सूची`, `पङ्क्ति`) don't take the
+generic plural marker; for *data-driven* lists use the reactive
+`सूची-दत्तांश` / `.प्रतिचित्रय` map rendering instead — plural groups are the
+concise form for *static* homogeneous element groups.
 
 **Scope (honest):** beyond the generic अकारान्त-style role markers (which the
 append-a-marker convention lets serve *every* stem for the common cases), the

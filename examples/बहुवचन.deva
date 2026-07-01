@@ -1,0 +1,32 @@
+# बहुवचन.deva — वचन-driven DOM: a plural कर्तृ builds an element GROUP.
+#
+# A singular tag (पटः) builds one element; a plural tag (पटाः) distributes
+# over its समास children — one element per child — all sharing the same
+# kāraka slots (here: a शैली/style). Run:  node src/cli.js build examples/बहुवचन.deva
+
+# singular — a single button
+नियत एकः = रचय पटः वाक्यम् "एकाकी"।
+
+# बहुवचन — three buttons from one construction, all styled alike
+नियत गणः = रचय पटाः रूप {
+    वर्णः: श्वेतः,
+    पृष्ठभूमिः: नीलः,
+    अन्तरालः: "8px 16px"
+} {
+    "सञ्चय"       # Save
+    "त्यज"        # Cancel
+    "लोपय"        # Delete
+}।
+
+# a plural inside a container flattens into siblings (no extra wrapper):
+#   <div><p>प्रथमम्</p><p>द्वितीयम्</p></div>
+नियत पृष्ठम् = रचय मूलः {
+    रचय वाक्याः {
+        "प्रथमम्"
+        "द्वितीयम्"
+    }
+}।
+
+योजय(एकः)।
+योजय(गणः)।
+योजय(पृष्ठम्)।

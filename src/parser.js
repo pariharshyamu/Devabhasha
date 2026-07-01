@@ -1,7 +1,7 @@
 // parser.js — builds an AST from the token stream.
 // Statements: recursive descent. Expressions: Pratt (precedence climbing).
 
-import { analyze } from './vibhakti.js';
+import { analyze, VACANA, KARAKA } from './vibhakti.js';
 import { KARAKA_TO_SLOT, TAG_STEMS, EVENT_STEMS } from './karaka-web.js';
 import { KEYWORDS } from './keywords.js';
 import { DevabhashaError } from './errors.js';
@@ -594,6 +594,7 @@ export function parse(tokens) {
     next(); // CONSTRUCT
     const slots = {};   // slotName -> AST/value
     const order = [];   // record kāraka order purely for diagnostics
+    let plural = false;  // बहुवचन on the कर्तृ (tag) → an element GROUP
 
     while (true) {
       const tok = peek();
@@ -603,6 +604,12 @@ export function parse(tokens) {
       next(); // consume the case-marked noun
       const slot = KARAKA_TO_SLOT[a.karaka];
       order.push(a.karaka);
+
+      // वचन agreement: a plural कर्तृ (nominative tag, e.g. पटाः "buttons")
+      // means the element distributes over the समास children — one element
+      // per child. The role is number-invariant; only the tag's number
+      // switches single-element vs. group construction.
+      if (a.karaka === KARAKA.KARTR && a.number === VACANA.BAHU) plural = true;
 
       if (slot === 'tag' && TAG_STEMS[a.stem]) {
         slots.tag = { type: 'String', value: TAG_STEMS[a.stem] };
@@ -655,7 +662,7 @@ export function parse(tokens) {
       expect('OP', '}');
     }
 
-    return { type: 'Construct', slots, order, children, style };
+    return { type: 'Construct', slots, order, children, style, plural };
   }
 
   // कोष { कुञ्जी: मूल्यम्, अन्या: मूल्यम् }  →  object literal
