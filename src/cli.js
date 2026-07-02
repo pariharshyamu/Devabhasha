@@ -5,7 +5,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { compile, compileWithMap } from './index.js';
-import { bundle } from './bundler.js';
+import { bundle, checkProgram } from './bundler.js';
 import { serve } from './devserver.js';
 import { __IO, IO_NODE_SOURCE } from './io-node.js';
 import { __SRV, SRV_NODE_SOURCE } from './server-node.js';
@@ -26,12 +26,13 @@ function failCompile(e, source) {
   process.exit(1);
 }
 
-if (!cmd || !['build', 'run', 'serve'].includes(cmd)) {
+if (!cmd || !['build', 'run', 'serve', 'check'].includes(cmd)) {
   console.log(`देवभाषा — Sanskrit → JavaScript transpiler
 
 Usage:
   devabhasha build <file.deva> [-o out.js]   compile (resolves आयात) to JavaScript
   devabhasha run   <file.deva>                compile and run with Node
+  devabhasha check <file.deva>                type-check the program (resolves आयात)
   devabhasha serve <file.deva> [--port N]     dev server with live reload (web)
 `);
   process.exit(0);
@@ -39,6 +40,22 @@ Usage:
 
 const file = args[1];
 if (!file) fail('no input file');
+
+// check: whole-program type analysis across the आयात graph. Type diagnostics
+// are warnings; exit non-zero when any are found so it is usable as a CI gate.
+if (cmd === 'check') {
+  let diags;
+  try { diags = checkProgram(file); }
+  catch (e) { failCompile(e); }
+  if (!diags.length) { console.log('✓ प्रकारपरीक्षा सफला (no type issues)'); process.exit(0); }
+  const cwd = process.cwd() + '/';
+  for (const d of diags) {
+    const where = String(d.file).replace(cwd, '');
+    console.error(`${where}:${d.line}:${d.col}  ${d.message}`);
+  }
+  console.error(`\n${diags.length} प्रकारभेदाः (type issue${diags.length === 1 ? '' : 's'})`);
+  process.exit(1);
+}
 
 if (cmd === 'serve') {
   const portIdx = args.indexOf('--port');

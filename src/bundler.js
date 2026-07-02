@@ -13,6 +13,7 @@ import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
 import { DevabhashaError } from './errors.js';
 import { id } from './codegen.js';
+import { moduleExportTypes, typeDiagnostics } from './types.js';
 
 // Resolve a module source string (as written in आयात "...") to an absolute
 // path, relative to the importing file. Appends .deva when no extension.
@@ -126,4 +127,33 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
   }
 
   return pieces.join('\n\n');
+}
+
+// Type-check a whole PROGRAM (the आयात graph rooted at entryPath), resolving
+// each module's imported names to the exporting module's declared types. So a
+// call to an imported function is argument-checked across the module boundary,
+// and a namespace import (आयात * रूपेण ग) is modelled as an object shape whose
+// fields are the module's exports — ग.योगः("x") is checked via member access +
+// the function-call path. Returns a flat list of { file, ...diagnostic }.
+export function checkProgram(entryPath) {
+  const { modules, order } = buildGraph(entryPath);
+  // export types are syntactic (from annotations), so they need no ordering
+  const exportTypes = new Map();
+  for (const [path, mod] of modules) exportTypes.set(path, moduleExportTypes(mod.source));
+
+  const all = [];
+  for (const path of order) {
+    const mod = modules.get(path);
+    const importSigs = new Map();
+    for (const imp of mod.imports) {
+      const depTypes = exportTypes.get(imp.resolved) || {};
+      if (imp.kind === 'named') {
+        for (const n of imp.names) importSigs.set(n, n in depTypes ? depTypes[n] : 'किमपि');
+      } else if (imp.kind === 'namespace') {
+        importSigs.set(imp.alias, { base: 'वस्तु', fields: { ...depTypes } });
+      }
+    }
+    for (const d of typeDiagnostics(mod.source, { importSigs })) all.push({ file: path, ...d });
+  }
+  return all;
 }

@@ -817,6 +817,28 @@ into a module and consumed by a main file.
 The bundler lives in `src/bundler.js`; `compileModule(src)` returns
 `{ code, exports, imports }` for tooling.
 
+**Cross-module type checking.** `devabhasha check entry.deva` type-checks the
+whole program across `आयात` edges. Each module's *exported signatures* (a
+`कार्य`'s parameter/return types, a typed `नियत`'s type) are resolved from the
+exporting module and seeded into the importer's checker — so a call to an
+imported function is argument-checked, an imported constant carries its declared
+type, and a namespace import (`आयात * रूपेण ग`) is modelled as an object shape so
+`ग.द्विगुण("x")` is checked through member access:
+
+```
+# गणित2.deva
+निर्यात कार्य द्विगुण (न: सङ्ख्या): सङ्ख्या { फलम् न + न। }
+# मुख्य.deva
+आयात { द्विगुण } आ "गणित2"।
+द्विगुण("तार")।          # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
+```
+
+Because signatures come from annotations, no dependency ordering is needed;
+unannotated exports stay `किमपि`, so untyped modules impose nothing (gradual).
+`check` exits non-zero when it finds issues, making it a CI gate. The core is
+`checkProgram(entry)` in the bundler; `moduleExportTypes(src)` in `src/types.js`
+extracts a module's export types.
+
 ## आदर्शकोशः — the standard library (written in Devabhāṣā)
 
 The standard library is itself written **in Devabhāṣā**, as `.deva` modules

@@ -120,15 +120,29 @@ function compatible(expected, actual) {
   return expected === actual;
 }
 
-export function typeDiagnostics(source) {
+// `opts.importSigs` is an optional Map<localName, type> seeding the types of
+// names brought in by आयात — a named import's export type, or a namespace alias
+// modelled as an object shape whose fields are the module's exports. With it,
+// calls to imported functions are argument-checked across module boundaries;
+// without it (a single-file check) imported names stay gradual, exactly as
+// before. See moduleExportTypes + the bundler's checkProgram.
+export function typeDiagnostics(source, opts = {}) {
   let ast;
   try { ast = parse(tokenize(source)); }
   catch { return []; }
+  const importSigs = opts.importSigs || null;
 
   const diags = [];
   const warn = (pos, message, kind) => {
     if (!pos || pos.line == null) return;
     diags.push({ line: pos.line, col: pos.col, endCol: pos.col + 1, message, kind, severity: WARNING });
+  };
+  // First source position on a node — descending a member/call chain to the
+  // root identifier, since Member/Call nodes themselves carry none.
+  const posOf = n => {
+    if (!n || typeof n !== 'object') return null;
+    if (n.line != null) return { line: n.line, col: n.col };
+    return posOf(n.object) || posOf(n.callee) || null;
   };
   // Validate an annotation node: flag unknown names and misplaced type
   // parameters (e.g. सङ्ख्या<...>), recursing through composite params.
@@ -414,8 +428,9 @@ export function typeDiagnostics(source) {
       if (want === ANY) continue;
       const got = infer(args[i], scope);
       if (!compatible(want, got)) {
-        // literal args carry no position; fall back to the callee's.
-        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : (c && c.line != null ? c : node);
+        // literal args carry no position; fall back to the callee (descending a
+        // member chain to the root identifier, which does carry one).
+        const pos = posOf(args[i]) || posOf(c) || posOf(node);
         warn(pos,
           `प्रकारभेदः (argument ${i + 1} of ${label} expects ${show(want)}, got ${show(got)})`,
           'type-arg');
@@ -446,9 +461,46 @@ export function typeDiagnostics(source) {
     }
   }
 
-  try { walkBody(ast, makeScope(null), null); }
+  const root = makeScope(null);
+  // Seed imported names: give each its type in the root scope, and register any
+  // that are functions in `sigs` so direct calls to them are argument-checked.
+  if (importSigs) for (const [name, t] of importSigs) {
+    setVar(root, name, t);
+    if (isFn(t)) sigs.set(name, { paramTypes: t.params, returnType: t.ret });
+  }
+  try { walkBody(ast, root, null); }
   catch { return []; }
   return diags;
+}
+
+// The exported types of a module, as { exportName: type } — a FuncDecl's or
+// typed function-expression's signature, or a typed नियत/चर's declared type.
+// Signatures come from annotations (syntactic), so this needs no type-checking
+// and no dependency ordering: it is what lets an importer check calls across
+// the module boundary. Unannotated exports are किमपि (gradual).
+export function moduleExportTypes(source) {
+  let ast;
+  try { ast = parse(tokenize(source)); }
+  catch { return {}; }
+  const body = ast.body || ast;
+  const fnTypeOf = node => ({
+    base: 'कार्य',
+    params: (node.paramTypes || node.params.map(() => null)).map(annType),
+    ret: node.returnType ? annType(node.returnType) : ANY,
+  });
+  const out = {};
+  for (const s of body) {
+    if (!s || s.type !== 'Export') continue;
+    const d = s.decl;
+    if (!d) continue;
+    if (d.type === 'FuncDecl') out[s.name] = fnTypeOf(d);
+    else if (d.type === 'VarDecl') {
+      if (d.varType) out[s.name] = annType(d.varType);
+      else if (d.init && d.init.type === 'FuncExpr') out[s.name] = fnTypeOf(d.init);
+      else out[s.name] = ANY;
+    } else out[s.name] = ANY;
+  }
+  return out;
 }
 
 // ---- type-aware hover ----
