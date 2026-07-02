@@ -8,19 +8,33 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { dirname, resolve, isAbsolute } from 'path';
+import { fileURLToPath } from 'url';
 import { compileModule, generate, PRELUDE } from './index.js';
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
 import { DevabhashaError } from './errors.js';
 import { id } from './codegen.js';
+import { moduleExportTypes, typeDiagnostics } from './types.js';
+
+// The canonical standard library ships with the compiler. An import whose
+// source begins with "std/" resolves HERE, regardless of the importing file's
+// location — so `आयात { योगः } आ "std/सूची"` works from anywhere without copying
+// the module. (The library modules are written in Devabhāṣā; see the folder.)
+const STD_PREFIX = 'std/';
+const STD_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'examples', 'stdlib');
 
 // Resolve a module source string (as written in आयात "...") to an absolute
-// path, relative to the importing file. Appends .deva when no extension.
+// path. "std/X" → the shipped standard library; otherwise relative to the
+// importing file. Appends .deva when no extension is given.
 function resolveSource(source, fromFile) {
+  if (source.startsWith(STD_PREFIX)) {
+    let name = source.slice(STD_PREFIX.length);
+    if (!/\.deva$/.test(name)) name += '.deva';
+    return resolve(STD_ROOT, name);
+  }
   let p = source;
   if (!/\.deva$/.test(p)) p += '.deva';
-  const base = isAbsolute(p) ? p : resolve(dirname(fromFile), p);
-  return base;
+  return isAbsolute(p) ? p : resolve(dirname(fromFile), p);
 }
 
 // Build the dependency graph by walking आयात edges from the entry file.
@@ -126,4 +140,48 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
   }
 
   return pieces.join('\n\n');
+}
+
+// Type-check a whole PROGRAM (the आयात graph rooted at entryPath), resolving
+// each module's imported names to the exporting module's declared types. So a
+// call to an imported function is argument-checked across the module boundary,
+// and a namespace import (आयात * रूपेण ग) is modelled as an object shape whose
+// fields are the module's exports — ग.योगः("x") is checked via member access +
+// the function-call path. Returns a flat list of { file, ...diagnostic }.
+export function checkProgram(entryPath) {
+  const { modules, order } = buildGraph(entryPath);
+  // export types are syntactic (from annotations), so they need no ordering
+  const exportTypes = new Map();
+  for (const [path, mod] of modules) exportTypes.set(path, moduleExportTypes(mod.source));
+
+  const all = [];
+  for (const path of order) {
+    const mod = modules.get(path);
+    const importSigs = new Map();
+    for (const imp of mod.imports) {
+      const depTypes = exportTypes.get(imp.resolved) || {};
+      if (imp.kind === 'named') {
+        // Import EXISTENCE: a named import of a symbol the target module does
+        // not निर्यात silently binds `undefined` at runtime — flag it here,
+        // pointed at the offending name (or the आयात keyword as a fallback).
+        const dep = modules.get(imp.resolved);
+        const exported = new Set(dep ? dep.exports : []);
+        imp.names.forEach((n, i) => {
+          if (!exported.has(n)) {
+            const pos = (imp.namePos && imp.namePos[i]) || { line: imp.line, col: imp.col };
+            all.push({
+              file: path, line: pos.line, col: pos.col, endCol: pos.col + 1,
+              message: `आयातदोषः ('${n}' is not exported by "${imp.source}")`,
+              kind: 'import-missing', severity: 1,
+            });
+          }
+        });
+        for (const n of imp.names) importSigs.set(n, n in depTypes ? depTypes[n] : 'किमपि');
+      } else if (imp.kind === 'namespace') {
+        importSigs.set(imp.alias, { base: 'वस्तु', fields: { ...depTypes } });
+      }
+    }
+    for (const d of typeDiagnostics(mod.source, { importSigs })) all.push({ file: path, ...d });
+  }
+  return all;
 }

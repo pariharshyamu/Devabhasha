@@ -58,6 +58,17 @@
 नियत द्विगुणाः = द्विगुणीकृ([१, २, ३], कार्य(न: सङ्ख्या): सङ्ख्या { फलम् योग(न, न)। })।
 दर्शय("द्विगुणाः:", द्विगुणाः)।       # [2, 4, 6]
 
+# type narrowing — a matched विकल्प pattern refines the branch. The binding मान
+# below inherits सङ्ख्या from the discriminant's shape, so योग(मान, १) checks;
+# passing मान to अभिवादनम् (which wants अक्षर) would be flagged.
+कार्य वृद्धिः (नोड: { प्रकार: अक्षर, मान: सङ्ख्या }): सङ्ख्या {
+    विकल्प (नोड) {
+        स्थिति कोष { प्रकार: "अङ्क", मान }: फलम् योग(मान, १)।   # मान is सङ्ख्या here
+        अन्यथा: फलम् ०।
+    }
+}
+दर्शय("वृद्धिः:", वृद्धिः(कोष { प्रकार: "अङ्क", मान: ४१ }))।   # 42
+
 # The following would be flagged by the analyzer (left commented so the file
 # still runs clean):
 #   योग("पञ्च", १)।              # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर

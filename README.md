@@ -749,6 +749,27 @@ flagged:
 Function types are compatible on matching arity with compatible parameters and
 return, compose inside shapes and arrays, and (like every annotation) are erased.
 
+### Type narrowing from `विकल्प` patterns
+
+A matched pattern refines its branch. Pattern **bindings inherit the
+discriminant's field/element types** (not just `किमपि`), and a plain-identifier
+discriminant is **narrowed** to the matched shape inside the branch:
+
+```
+कार्य वृद्धिः (नोड: { प्रकार: अक्षर, मान: सङ्ख्या }): सङ्ख्या {
+    विकल्प (नोड) {
+        स्थिति कोष { प्रकार: "अङ्क", मान }: फलम् योग(मान, १)।   # मान is known सङ्ख्या
+        अन्यथा: फलम् ०।
+    }
+}
+```
+
+Here `मान` is `सङ्ख्या` (from the discriminant's shape), so `योग(मान, १)` checks;
+using it where an `अक्षर` is expected would be flagged. Array patterns flow the
+element type to positional binds and the array type to the rest. Narrowing only
+ever *refines* — an untyped discriminant leaves bindings gradual, so it never
+manufactures a false mismatch.
+
 ### Type-aware hover
 
 Hovering an annotated binding — or any reference to one — reports its declared
@@ -785,7 +806,8 @@ source preposition, in three forms:
 ```
 
 `devabhasha build entry.deva` (or `run`) resolves every `आयात` relative to
-the importing file (appending `.deva`), compiles each module once, orders
+the importing file (appending `.deva`) — except a `std/…` source, which
+resolves to the shipped standard library from anywhere — compiles each module once, orders
 them dependency-first (topological sort), and links them: each module
 becomes an IIFE returning its export object, named imports destructure it,
 namespace imports bind the whole object. Diamond dependencies compile the
@@ -796,25 +818,69 @@ into a module and consumed by a main file.
 The bundler lives in `src/bundler.js`; `compileModule(src)` returns
 `{ code, exports, imports }` for tooling.
 
+**Cross-module type checking.** `devabhasha check entry.deva` type-checks the
+whole program across `आयात` edges. Each module's *exported signatures* (a
+`कार्य`'s parameter/return types, a typed `नियत`'s type) are resolved from the
+exporting module and seeded into the importer's checker — so a call to an
+imported function is argument-checked, an imported constant carries its declared
+type, and a namespace import (`आयात * रूपेण ग`) is modelled as an object shape so
+`ग.द्विगुण("x")` is checked through member access:
+
+```
+# गणित2.deva
+निर्यात कार्य द्विगुण (न: सङ्ख्या): सङ्ख्या { फलम् न + न। }
+# मुख्य.deva
+आयात { द्विगुण } आ "गणित2"।
+द्विगुण("तार")।          # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
+```
+
+Because signatures come from annotations, no dependency ordering is needed;
+unannotated exports stay `किमपि`, so untyped modules impose nothing (gradual).
+
+`check` also verifies **import existence**: a named import of a symbol the
+target module does not `निर्यात` binds `undefined` at runtime — a silent bug —
+so it is flagged, pointed precisely at the offending name. (Namespace and
+side-effect imports name nothing, so they are never flagged.)
+
+```
+आयात { द्विगुण, नास्ति } आ "गणित2"।   # आयातदोषः: 'नास्ति' is not exported by "गणित2"
+```
+
+`check` exits non-zero when it finds issues, making it a CI gate. The core is
+`checkProgram(entry)` in the bundler; `moduleExportTypes(src)` in `src/types.js`
+extracts a module's export types.
+
 ## आदर्शकोशः — the standard library (written in Devabhāṣā)
 
 The standard library is itself written **in Devabhāṣā**, as `.deva` modules
 under `examples/stdlib/` — the clearest proof the module system earns its
 keep, and the "move features to libraries" principle in practice. Each is
 plain Devabhāṣā built on the array/string/object primitives, with zero
-compiler support:
+compiler support. The data-structure modules (सूची / पाठ / कोष) are also
+**typed** — signatures carry प्रकार annotations wherever the type is genuinely
+concrete (`योगः` wants `गण<सङ्ख्या>`, `आवर्तय` an `अक्षर` and a `सङ्ख्या`
+count, a predicate a `कार्य(किमपि): तथ्य`). Element-polymorphic helpers keep a
+bare `गण`/`किमपि`, since the type layer has no generics and an honest `किमपि`
+beats a false `गण<सङ्ख्या>`. The annotations are erased, so runtime is
+unchanged — but `devabhasha check` now argument-checks calls *through* a `std/`
+import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
 
 - **सूची** (list): `योगः` (sum), `गुणनफलम्` (product), `न्यूनीकरणम्` (fold),
   `अन्वेषय` (find), `सन्ति`/`सर्वे` (any/all), `न्यूनतमम्`/`महत्तमम्`
   (min/max), `अद्वितीयम्` (unique), `आदिमानि`/`शेषाणि` (take/drop),
-  `समतलीकृ` (flatten), `परिसरः` (range).
+  `समतलीकृ` (flatten), `परिसरः` (range), `क्रमय` (sort by comparator — a
+  **stable merge sort written in Devabhāṣā**, no `.sort` primitive),
+  `क्रमयाङ्कैः` (numeric sort), `गणय` (count matching), `युग्मय` (zip),
+  `खण्डशः` (chunk).
 - **कोष** (object): `कुञ्जयः`/`मूल्यानि`/`प्रविष्टयः` (keys/values/entries),
   `अस्ति` (has-key), `सङ्ख्या` (count), `विलयः` (merge),
-  `प्रतिचित्रयमूल्यानि` (map-values), `गालयकुञ्जीभिः` (pick). Built on the
+  `प्रतिचित्रयमूल्यानि` (map-values), `गालयकुञ्जीभिः` (pick),
+  `त्यजकुञ्जीभिः` (omit), `विपर्यासय` (invert keys/values). Built on the
   `सङ्ग्रह` (Object) global.
-- **पाठ** (string): `आवर्तय` (repeat), `वामपूरणम्` (pad-left),
-  `प्रथमाक्षरोच्च` (capitalize), `पदानि` (words), `व्युत्क्रमः` (reverse),
-  `परिवर्तय_सर्वम्` (replace-all), `रिक्तः` (is-blank).
+- **पाठ** (string): `आवर्तय` (repeat), `वामपूरणम्`/`दक्षिणपूरणम्`
+  (pad-left/right), `प्रथमाक्षरोच्च` (capitalize), `पदानि` (words),
+  `पङ्क्तयः` (lines), `व्युत्क्रमः` (reverse), `परिवर्तय_सर्वम्` (replace-all),
+  `आवृत्तिः` (count occurrences), `रिक्तः` (is-blank).
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep
@@ -822,14 +888,22 @@ compiler support:
   true to the no-exceptions design, assertions **record** their outcome into a
   collector rather than throwing.
 
-Use them like any module — and they compose, importing from several at once:
+Use them by their **canonical `std/` name** from anywhere — the compiler ships
+the library, so no copying beside your program is needed. `std/X` resolves to
+the shipped module regardless of the importing file's location:
 
 ```
-आयात { परिसरः, योगः } आ "सूची"।
-आयात { आवर्तय } आ "पाठ"।
+आयात { परिसरः, योगः } आ "std/सूची"।
+आयात { आवर्तय } आ "std/पाठ"।
 दर्शय(योगः(परिसरः(१, ५)))।            # 10
 दर्शय(आवर्तय("=", योगः([१,२])))।       # "==="
 ```
+
+Everything else works through `std/` too: namespace imports (`आयात * रूपेण सू आ
+"std/सूची"`), `devabhasha run`/`build`, and `devabhasha check` (cross-module
+type checking resolves `std/` like any other edge). A plain relative import
+(`आ "./mymod"`) still resolves next to the importing file; only the `std/`
+prefix reaches into the shipped library (currently `examples/stdlib/`).
 
 With `परीक्षा`, the language tests itself: Devabhāṣā programs (including the
 standard library above) can be tested *in Devabhāṣā*, completing the
@@ -1267,12 +1341,12 @@ checker).
 
 Open directions from here:
 
-1. **Deeper types** — **now in place**: element-typed arrays (`गण<सङ्ख्या>`),
-   **object shapes** (`{ नाम: अक्षर }`, structural with width subtyping and
-   field-type flow), **function types** (`कार्य(सङ्ख्या): तथ्य`, checked through
-   higher-order calls), and **type-aware hover**. A natural next step is
-   type-narrowing from `विकल्प` patterns (a matched `कोष { प्रकार: "If" }` could
-   refine the branch's type).
+1. **Deeper types** — **done**: element-typed arrays (`गण<सङ्ख्या>`), **object
+   shapes** (`{ नाम: अक्षर }`, structural with width subtyping and field-type
+   flow), **function types** (`कार्य(सङ्ख्या): तथ्य`, checked through higher-order
+   calls), **type narrowing from `विकल्प` patterns** (bindings inherit the
+   discriminant's field/element types; the discriminant is narrowed to the
+   matched shape), and **type-aware hover**.
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending

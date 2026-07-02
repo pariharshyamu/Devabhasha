@@ -22,7 +22,7 @@
 
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
-import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
+import { isMatchPattern, patternConstraints } from './patterns.js';
 
 const ANY = 'किमपि';
 const VOID = 'रिक्त';
@@ -45,6 +45,8 @@ const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
 // वस्तु carries no known fields (fieldsOf → null → structurally unconstrained).
 const isObj = t => t === 'वस्तु' || !!(t && t.base === 'वस्तु');
 const fieldsOf = t => (t && t.base === 'वस्तु') ? t.fields : null;
+// The declared type of a field on a known shape, else किमपि (gradual).
+const fieldType = (t, key) => { const f = fieldsOf(t); return f && (key in f) ? f[key] : ANY; };
 // A function type: { base:'कार्य', params:[type], ret:type }.
 const isFn = t => !!(t && t.base === 'कार्य');
 
@@ -118,15 +120,29 @@ function compatible(expected, actual) {
   return expected === actual;
 }
 
-export function typeDiagnostics(source) {
+// `opts.importSigs` is an optional Map<localName, type> seeding the types of
+// names brought in by आयात — a named import's export type, or a namespace alias
+// modelled as an object shape whose fields are the module's exports. With it,
+// calls to imported functions are argument-checked across module boundaries;
+// without it (a single-file check) imported names stay gradual, exactly as
+// before. See moduleExportTypes + the bundler's checkProgram.
+export function typeDiagnostics(source, opts = {}) {
   let ast;
   try { ast = parse(tokenize(source)); }
   catch { return []; }
+  const importSigs = opts.importSigs || null;
 
   const diags = [];
   const warn = (pos, message, kind) => {
     if (!pos || pos.line == null) return;
     diags.push({ line: pos.line, col: pos.col, endCol: pos.col + 1, message, kind, severity: WARNING });
+  };
+  // First source position on a node — descending a member/call chain to the
+  // root identifier, since Member/Call nodes themselves carry none.
+  const posOf = n => {
+    if (!n || typeof n !== 'object') return null;
+    if (n.line != null) return { line: n.line, col: n.col };
+    return posOf(n.object) || posOf(n.callee) || null;
   };
   // Validate an annotation node: flag unknown names and misplaced type
   // parameters (e.g. सङ्ख्या<...>), recursing through composite params.
@@ -237,6 +253,48 @@ export function typeDiagnostics(source) {
     }
   }
 
+  // ---- type narrowing from a विकल्प pattern ----
+  // Within a branch that matched a pattern, the discriminant is known to have
+  // the pattern's shape. narrowFromPattern derives that refined type, preferring
+  // the discriminant's own (more precise, declared) field types where it has
+  // them and adding what the pattern guarantees. An array pattern just confirms
+  // गण-ness (keeping the discriminant's element type when known).
+  function narrowFromPattern(pat, dt, scope) {
+    if (pat.type === 'MatchObject') {
+      const fields = {};
+      for (const p of pat.props) {
+        if (p.kind === 'const') fields[p.key] = infer(p.value, scope);
+        else if (p.kind === 'nested') fields[p.key] = narrowFromPattern(p.sub, fieldType(dt, p.key), scope);
+        else fields[p.key] = fieldType(dt, p.key);            // a binding
+      }
+      // the discriminant's own known fields win (they are declared, hence more
+      // precise than a constraint literal's inferred base type)
+      return { base: 'वस्तु', fields: { ...fields, ...(fieldsOf(dt) || {}) } };
+    }
+    if (pat.type === 'MatchArray') return isArr(dt) ? dt : { base: 'गण', elem: ANY };
+    return dt;
+  }
+
+  // Give each binding a pattern introduces its type FROM THE DISCRIMINANT: an
+  // object field's declared type, an array element's element type, the rest as
+  // the array itself. Falls back to किमपि when the discriminant's type is
+  // unknown — so this only ever refines, never invents a mismatch.
+  function bindPatternTypes(pat, dt, scope) {
+    if (pat.type === 'MatchObject') {
+      for (const p of pat.props) {
+        if (p.kind === 'bind') setVar(scope, p.name, fieldType(dt, p.key));
+        else if (p.kind === 'nested') bindPatternTypes(p.sub, fieldType(dt, p.key), scope);
+      }
+    } else if (pat.type === 'MatchArray') {
+      const et = elemOf(dt);
+      pat.elements.forEach(e => {
+        if (e.kind === 'bind') setVar(scope, e.name, et);
+        else if (e.kind === 'nested') bindPatternTypes(e.sub, et, scope);
+      });
+      if (pat.rest) setVar(scope, pat.rest.name, isArr(dt) ? dt : { base: 'गण', elem: ANY });
+    }
+  }
+
   // ---- walk ----
   const walkBody = (block, scope, ret) => {
     const body = Array.isArray(block) ? block : (block && block.body) || [];
@@ -319,16 +377,22 @@ export function typeDiagnostics(source) {
           setVar(ls, node.item, elemOf(infer(node.iterable, scope)));
           walkBody(node.body, ls, ret); }
         return;
-      case 'Switch':
+      case 'Switch': {
         walkExpr(node.discriminant, scope);
+        const discType = infer(node.discriminant, scope);
+        // narrow only a plain-identifier discriminant (नोड), and only in a
+        // single-pattern branch (comma-alternatives don't share one shape).
+        const discName = node.discriminant.type === 'Identifier' ? node.discriminant.name : null;
         (node.cases || []).forEach(c => {
           const cscope = makeScope(scope);
           for (const t of (c.tests || [])) {
-            // pattern tests bind names (typed किमपि — the shape isn't tracked
-            // yet) and constrain with value expressions; value tests are exprs.
             if (isMatchPattern(t)) {
               patternConstraints(t).forEach(e => walkExpr(e, scope));
-              patternBindings(t).forEach(b => setVar(cscope, b.name, ANY));
+              // bindings inherit the discriminant's field/element types…
+              bindPatternTypes(t, discType, cscope);
+              // …and the discriminant itself is narrowed to the matched shape.
+              if (discName && c.tests.length === 1)
+                setVar(cscope, discName, narrowFromPattern(t, discType, scope));
             } else {
               walkExpr(t, scope);
             }
@@ -336,6 +400,7 @@ export function typeDiagnostics(source) {
           walkBody(c.body, cscope, ret);
         });
         return;
+      }
       case 'Block': walkBody(node.body, makeScope(scope), ret); return;
       case 'View':
         node.container && walkExpr(node.container, scope);
@@ -363,8 +428,9 @@ export function typeDiagnostics(source) {
       if (want === ANY) continue;
       const got = infer(args[i], scope);
       if (!compatible(want, got)) {
-        // literal args carry no position; fall back to the callee's.
-        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : (c && c.line != null ? c : node);
+        // literal args carry no position; fall back to the callee (descending a
+        // member chain to the root identifier, which does carry one).
+        const pos = posOf(args[i]) || posOf(c) || posOf(node);
         warn(pos,
           `प्रकारभेदः (argument ${i + 1} of ${label} expects ${show(want)}, got ${show(got)})`,
           'type-arg');
@@ -395,9 +461,46 @@ export function typeDiagnostics(source) {
     }
   }
 
-  try { walkBody(ast, makeScope(null), null); }
+  const root = makeScope(null);
+  // Seed imported names: give each its type in the root scope, and register any
+  // that are functions in `sigs` so direct calls to them are argument-checked.
+  if (importSigs) for (const [name, t] of importSigs) {
+    setVar(root, name, t);
+    if (isFn(t)) sigs.set(name, { paramTypes: t.params, returnType: t.ret });
+  }
+  try { walkBody(ast, root, null); }
   catch { return []; }
   return diags;
+}
+
+// The exported types of a module, as { exportName: type } — a FuncDecl's or
+// typed function-expression's signature, or a typed नियत/चर's declared type.
+// Signatures come from annotations (syntactic), so this needs no type-checking
+// and no dependency ordering: it is what lets an importer check calls across
+// the module boundary. Unannotated exports are किमपि (gradual).
+export function moduleExportTypes(source) {
+  let ast;
+  try { ast = parse(tokenize(source)); }
+  catch { return {}; }
+  const body = ast.body || ast;
+  const fnTypeOf = node => ({
+    base: 'कार्य',
+    params: (node.paramTypes || node.params.map(() => null)).map(annType),
+    ret: node.returnType ? annType(node.returnType) : ANY,
+  });
+  const out = {};
+  for (const s of body) {
+    if (!s || s.type !== 'Export') continue;
+    const d = s.decl;
+    if (!d) continue;
+    if (d.type === 'FuncDecl') out[s.name] = fnTypeOf(d);
+    else if (d.type === 'VarDecl') {
+      if (d.varType) out[s.name] = annType(d.varType);
+      else if (d.init && d.init.type === 'FuncExpr') out[s.name] = fnTypeOf(d.init);
+      else out[s.name] = ANY;
+    } else out[s.name] = ANY;
+  }
+  return out;
 }
 
 // ---- type-aware hover ----
