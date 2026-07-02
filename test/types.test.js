@@ -136,6 +136,26 @@ ok('unknown type inside a function type is flagged',
 ok('function type composes inside a shape',
    clean('नियत h: { पठ: कार्य(सङ्ख्या): रिक्त } = कोष { पठ: कार्य(n){ दर्शय(n)।} }।'));
 
+// ---------- type narrowing from विकल्प patterns ----------
+const narrow = (body, argFn = 's: अक्षर') =>
+  `कार्य g(${argFn}){फलम् ०।} कार्य f(नोड: { मान: सङ्ख्या }){ विकल्प(नोड){ ${body} अन्यथा: फलम् ०।}}`;
+ok('pattern binding inherits the discriminant field type (misuse flagged)',
+   has(narrow('स्थिति कोष{ मान }: फलम् g(मान)।'), 'type-arg'));
+ok('pattern binding inherits the field type (correct use clean)',
+   clean(narrow('स्थिति कोष{ मान }: फलम् g(मान)।', 'n: सङ्ख्या')));
+ok('narrowed discriminant: member access is checked in the branch',
+   has(narrow('स्थिति कोष{ प्रकार: "क" }: फलम् g(नोड.मान)।'), 'type-arg'));
+ok('array pattern element inherits गण<सङ्ख्या> element type',
+   has('कार्य g(s: अक्षर){फलम् ०।} कार्य f(xs: गण<सङ्ख्या>){ विकल्प(xs){ स्थिति [अ, ब]: फलम् g(अ)। अन्यथा: फलम् ०।}}', 'type-arg'));
+ok('array rest inherits the array type (clean)',
+   clean('कार्य g(n: सङ्ख्या){फलम् n।} कार्य f(xs: गण<सङ्ख्या>){ विकल्प(xs){ स्थिति [अ, ...श]: फलम् g(श.दीर्घता)। अन्यथा: फलम् ०।}}'));
+ok('nested pattern binding inherits the nested field type',
+   has('कार्य g(s: अक्षर){फलम् ०।} कार्य f(नोड: { प: { x: सङ्ख्या } }){ विकल्प(नोड){ स्थिति कोष{ प: कोष{ x } }: फलम् g(x)। अन्यथा: फलम् ०।}}', 'type-arg'));
+ok('untyped discriminant keeps bindings gradual (no false positive)',
+   clean('कार्य g(s: अक्षर){फलम् ०।} कार्य f(नोड){ विकल्प(नोद){ स्थिति कोष{ मान }: फलम् g(मान)। अन्यथा: फलम् ०।}}'.replace('नोद','नोड')));
+ok('comma-alternative branch does not narrow the discriminant',
+   clean('कार्य f(नोड: { मान: सङ्ख्या }){ विकल्प(नोड){ स्थिति कोष{मान}, कोष{प्रकार:"x"}: दर्शय(नोड)। अन्यथा: दर्शय(०)।}}'));
+
 // ---------- integration ----------
 ok('diagnostics() surfaces type warnings',
    diagnostics('चर न: सङ्ख्या = "x"।').some(d => d.kind === 'type-init' && d.severity === 2));

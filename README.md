@@ -749,6 +749,27 @@ flagged:
 Function types are compatible on matching arity with compatible parameters and
 return, compose inside shapes and arrays, and (like every annotation) are erased.
 
+### Type narrowing from `विकल्प` patterns
+
+A matched pattern refines its branch. Pattern **bindings inherit the
+discriminant's field/element types** (not just `किमपि`), and a plain-identifier
+discriminant is **narrowed** to the matched shape inside the branch:
+
+```
+कार्य वृद्धिः (नोड: { प्रकार: अक्षर, मान: सङ्ख्या }): सङ्ख्या {
+    विकल्प (नोड) {
+        स्थिति कोष { प्रकार: "अङ्क", मान }: फलम् योग(मान, १)।   # मान is known सङ्ख्या
+        अन्यथा: फलम् ०।
+    }
+}
+```
+
+Here `मान` is `सङ्ख्या` (from the discriminant's shape), so `योग(मान, १)` checks;
+using it where an `अक्षर` is expected would be flagged. Array patterns flow the
+element type to positional binds and the array type to the rest. Narrowing only
+ever *refines* — an untyped discriminant leaves bindings gradual, so it never
+manufactures a false mismatch.
+
 ### Type-aware hover
 
 Hovering an annotated binding — or any reference to one — reports its declared
@@ -1267,12 +1288,12 @@ checker).
 
 Open directions from here:
 
-1. **Deeper types** — **now in place**: element-typed arrays (`गण<सङ्ख्या>`),
-   **object shapes** (`{ नाम: अक्षर }`, structural with width subtyping and
-   field-type flow), **function types** (`कार्य(सङ्ख्या): तथ्य`, checked through
-   higher-order calls), and **type-aware hover**. A natural next step is
-   type-narrowing from `विकल्प` patterns (a matched `कोष { प्रकार: "If" }` could
-   refine the branch's type).
+1. **Deeper types** — **done**: element-typed arrays (`गण<सङ्ख्या>`), **object
+   shapes** (`{ नाम: अक्षर }`, structural with width subtyping and field-type
+   flow), **function types** (`कार्य(सङ्ख्या): तथ्य`, checked through higher-order
+   calls), **type narrowing from `विकल्प` patterns** (bindings inherit the
+   discriminant's field/element types; the discriminant is narrowed to the
+   matched shape), and **type-aware hover**.
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending

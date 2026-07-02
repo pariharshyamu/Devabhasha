@@ -22,7 +22,7 @@
 
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
-import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
+import { isMatchPattern, patternConstraints } from './patterns.js';
 
 const ANY = 'किमपि';
 const VOID = 'रिक्त';
@@ -45,6 +45,8 @@ const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
 // वस्तु carries no known fields (fieldsOf → null → structurally unconstrained).
 const isObj = t => t === 'वस्तु' || !!(t && t.base === 'वस्तु');
 const fieldsOf = t => (t && t.base === 'वस्तु') ? t.fields : null;
+// The declared type of a field on a known shape, else किमपि (gradual).
+const fieldType = (t, key) => { const f = fieldsOf(t); return f && (key in f) ? f[key] : ANY; };
 // A function type: { base:'कार्य', params:[type], ret:type }.
 const isFn = t => !!(t && t.base === 'कार्य');
 
@@ -237,6 +239,48 @@ export function typeDiagnostics(source) {
     }
   }
 
+  // ---- type narrowing from a विकल्प pattern ----
+  // Within a branch that matched a pattern, the discriminant is known to have
+  // the pattern's shape. narrowFromPattern derives that refined type, preferring
+  // the discriminant's own (more precise, declared) field types where it has
+  // them and adding what the pattern guarantees. An array pattern just confirms
+  // गण-ness (keeping the discriminant's element type when known).
+  function narrowFromPattern(pat, dt, scope) {
+    if (pat.type === 'MatchObject') {
+      const fields = {};
+      for (const p of pat.props) {
+        if (p.kind === 'const') fields[p.key] = infer(p.value, scope);
+        else if (p.kind === 'nested') fields[p.key] = narrowFromPattern(p.sub, fieldType(dt, p.key), scope);
+        else fields[p.key] = fieldType(dt, p.key);            // a binding
+      }
+      // the discriminant's own known fields win (they are declared, hence more
+      // precise than a constraint literal's inferred base type)
+      return { base: 'वस्तु', fields: { ...fields, ...(fieldsOf(dt) || {}) } };
+    }
+    if (pat.type === 'MatchArray') return isArr(dt) ? dt : { base: 'गण', elem: ANY };
+    return dt;
+  }
+
+  // Give each binding a pattern introduces its type FROM THE DISCRIMINANT: an
+  // object field's declared type, an array element's element type, the rest as
+  // the array itself. Falls back to किमपि when the discriminant's type is
+  // unknown — so this only ever refines, never invents a mismatch.
+  function bindPatternTypes(pat, dt, scope) {
+    if (pat.type === 'MatchObject') {
+      for (const p of pat.props) {
+        if (p.kind === 'bind') setVar(scope, p.name, fieldType(dt, p.key));
+        else if (p.kind === 'nested') bindPatternTypes(p.sub, fieldType(dt, p.key), scope);
+      }
+    } else if (pat.type === 'MatchArray') {
+      const et = elemOf(dt);
+      pat.elements.forEach(e => {
+        if (e.kind === 'bind') setVar(scope, e.name, et);
+        else if (e.kind === 'nested') bindPatternTypes(e.sub, et, scope);
+      });
+      if (pat.rest) setVar(scope, pat.rest.name, isArr(dt) ? dt : { base: 'गण', elem: ANY });
+    }
+  }
+
   // ---- walk ----
   const walkBody = (block, scope, ret) => {
     const body = Array.isArray(block) ? block : (block && block.body) || [];
@@ -319,16 +363,22 @@ export function typeDiagnostics(source) {
           setVar(ls, node.item, elemOf(infer(node.iterable, scope)));
           walkBody(node.body, ls, ret); }
         return;
-      case 'Switch':
+      case 'Switch': {
         walkExpr(node.discriminant, scope);
+        const discType = infer(node.discriminant, scope);
+        // narrow only a plain-identifier discriminant (नोड), and only in a
+        // single-pattern branch (comma-alternatives don't share one shape).
+        const discName = node.discriminant.type === 'Identifier' ? node.discriminant.name : null;
         (node.cases || []).forEach(c => {
           const cscope = makeScope(scope);
           for (const t of (c.tests || [])) {
-            // pattern tests bind names (typed किमपि — the shape isn't tracked
-            // yet) and constrain with value expressions; value tests are exprs.
             if (isMatchPattern(t)) {
               patternConstraints(t).forEach(e => walkExpr(e, scope));
-              patternBindings(t).forEach(b => setVar(cscope, b.name, ANY));
+              // bindings inherit the discriminant's field/element types…
+              bindPatternTypes(t, discType, cscope);
+              // …and the discriminant itself is narrowed to the matched shape.
+              if (discName && c.tests.length === 1)
+                setVar(cscope, discName, narrowFromPattern(t, discType, scope));
             } else {
               walkExpr(t, scope);
             }
@@ -336,6 +386,7 @@ export function typeDiagnostics(source) {
           walkBody(c.body, cscope, ret);
         });
         return;
+      }
       case 'Block': walkBody(node.body, makeScope(scope), ret); return;
       case 'View':
         node.container && walkExpr(node.container, scope);
