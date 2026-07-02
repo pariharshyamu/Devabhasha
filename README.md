@@ -806,7 +806,8 @@ source preposition, in three forms:
 ```
 
 `devabhasha build entry.deva` (or `run`) resolves every `आयात` relative to
-the importing file (appending `.deva`), compiles each module once, orders
+the importing file (appending `.deva`) — except a `std/…` source, which
+resolves to the shipped standard library from anywhere — compiles each module once, orders
 them dependency-first (topological sort), and links them: each module
 becomes an IIFE returning its export object, named imports destructure it,
 namespace imports bind the whole object. Diamond dependencies compile the
@@ -865,14 +866,22 @@ compiler support:
   true to the no-exceptions design, assertions **record** their outcome into a
   collector rather than throwing.
 
-Use them like any module — and they compose, importing from several at once:
+Use them by their **canonical `std/` name** from anywhere — the compiler ships
+the library, so no copying beside your program is needed. `std/X` resolves to
+the shipped module regardless of the importing file's location:
 
 ```
-आयात { परिसरः, योगः } आ "सूची"।
-आयात { आवर्तय } आ "पाठ"।
+आयात { परिसरः, योगः } आ "std/सूची"।
+आयात { आवर्तय } आ "std/पाठ"।
 दर्शय(योगः(परिसरः(१, ५)))।            # 10
 दर्शय(आवर्तय("=", योगः([१,२])))।       # "==="
 ```
+
+Everything else works through `std/` too: namespace imports (`आयात * रूपेण सू आ
+"std/सूची"`), `devabhasha run`/`build`, and `devabhasha check` (cross-module
+type checking resolves `std/` like any other edge). A plain relative import
+(`आ "./mymod"`) still resolves next to the importing file; only the `std/`
+prefix reaches into the shipped library (currently `examples/stdlib/`).
 
 With `परीक्षा`, the language tests itself: Devabhāṣā programs (including the
 standard library above) can be tested *in Devabhāṣā*, completing the

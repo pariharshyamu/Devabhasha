@@ -8,6 +8,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { dirname, resolve, isAbsolute } from 'path';
+import { fileURLToPath } from 'url';
 import { compileModule, generate, PRELUDE } from './index.js';
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
@@ -15,13 +16,25 @@ import { DevabhashaError } from './errors.js';
 import { id } from './codegen.js';
 import { moduleExportTypes, typeDiagnostics } from './types.js';
 
+// The canonical standard library ships with the compiler. An import whose
+// source begins with "std/" resolves HERE, regardless of the importing file's
+// location — so `आयात { योगः } आ "std/सूची"` works from anywhere without copying
+// the module. (The library modules are written in Devabhāṣā; see the folder.)
+const STD_PREFIX = 'std/';
+const STD_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'examples', 'stdlib');
+
 // Resolve a module source string (as written in आयात "...") to an absolute
-// path, relative to the importing file. Appends .deva when no extension.
+// path. "std/X" → the shipped standard library; otherwise relative to the
+// importing file. Appends .deva when no extension is given.
 function resolveSource(source, fromFile) {
+  if (source.startsWith(STD_PREFIX)) {
+    let name = source.slice(STD_PREFIX.length);
+    if (!/\.deva$/.test(name)) name += '.deva';
+    return resolve(STD_ROOT, name);
+  }
   let p = source;
   if (!/\.deva$/.test(p)) p += '.deva';
-  const base = isAbsolute(p) ? p : resolve(dirname(fromFile), p);
-  return base;
+  return isAbsolute(p) ? p : resolve(dirname(fromFile), p);
 }
 
 // Build the dependency graph by walking आयात edges from the entry file.
