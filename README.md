@@ -836,6 +836,16 @@ type, and a namespace import (`आयात * रूपेण ग`) is modelled 
 
 Because signatures come from annotations, no dependency ordering is needed;
 unannotated exports stay `किमपि`, so untyped modules impose nothing (gradual).
+
+`check` also verifies **import existence**: a named import of a symbol the
+target module does not `निर्यात` binds `undefined` at runtime — a silent bug —
+so it is flagged, pointed precisely at the offending name. (Namespace and
+side-effect imports name nothing, so they are never flagged.)
+
+```
+आयात { द्विगुण, नास्ति } आ "गणित2"।   # आयातदोषः: 'नास्ति' is not exported by "गणित2"
+```
+
 `check` exits non-zero when it finds issues, making it a CI gate. The core is
 `checkProgram(entry)` in the bundler; `moduleExportTypes(src)` in `src/types.js`
 extracts a module's export types.

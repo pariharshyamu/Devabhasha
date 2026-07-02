@@ -782,7 +782,7 @@ export function parse(tokens) {
   //   आयात * रूपेण ग आ "गणित"।             namespace import (ग.द्वि …)
   //   आयात "उपकरणम्"।                       side-effect import (run the module)
   function parseImport() {
-    next(); // IMPORT
+    const kw = next(); // IMPORT — its position anchors import diagnostics
     // namespace:  * रूपेण <name>
     if (check('OP', '*')) {
       next();
@@ -792,25 +792,27 @@ export function parse(tokens) {
       const alias = expect('IDENT').value;
       expect('FROM');
       const source = expect('STRING').value;
-      return { type: 'Import', kind: 'namespace', alias, names: null, source };
+      return { type: 'Import', kind: 'namespace', alias, names: null, source, line: kw.line, col: kw.col };
     }
     // named:  { a, b, c } आ "..."
     if (check('OP', '{')) {
       next();
       const names = [];
+      const namePos = [];   // parallel to names, so a missing import points precisely
       while (!check('OP', '}') && !check('EOF')) {
-        names.push(expect('IDENT').value);
+        const t = expect('IDENT');
+        names.push(t.value); namePos.push({ line: t.line, col: t.col });
         if (check('OP', ',')) next();
       }
       expect('OP', '}');
       expect('FROM');
       const source = expect('STRING').value;
-      return { type: 'Import', kind: 'named', names, alias: null, source };
+      return { type: 'Import', kind: 'named', names, namePos, alias: null, source, line: kw.line, col: kw.col };
     }
     // side-effect:  आयात "..."
     if (check('STRING')) {
       const source = next().value;
-      return { type: 'Import', kind: 'effect', names: null, alias: null, source };
+      return { type: 'Import', kind: 'effect', names: null, alias: null, source, line: kw.line, col: kw.col };
     }
     throw new DevabhashaError('आयातदोषः: expected { names } आ "module", * रूपेण name आ "module", or "module"',
       { line: peek().line, col: peek().col, kind: 'parse' });

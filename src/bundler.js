@@ -161,6 +161,21 @@ export function checkProgram(entryPath) {
     for (const imp of mod.imports) {
       const depTypes = exportTypes.get(imp.resolved) || {};
       if (imp.kind === 'named') {
+        // Import EXISTENCE: a named import of a symbol the target module does
+        // not निर्यात silently binds `undefined` at runtime — flag it here,
+        // pointed at the offending name (or the आयात keyword as a fallback).
+        const dep = modules.get(imp.resolved);
+        const exported = new Set(dep ? dep.exports : []);
+        imp.names.forEach((n, i) => {
+          if (!exported.has(n)) {
+            const pos = (imp.namePos && imp.namePos[i]) || { line: imp.line, col: imp.col };
+            all.push({
+              file: path, line: pos.line, col: pos.col, endCol: pos.col + 1,
+              message: `आयातदोषः ('${n}' is not exported by "${imp.source}")`,
+              kind: 'import-missing', severity: 1,
+            });
+          }
+        });
         for (const n of imp.names) importSigs.set(n, n in depTypes ? depTypes[n] : 'किमपि');
       } else if (imp.kind === 'namespace') {
         importSigs.set(imp.alias, { base: 'वस्तु', fields: { ...depTypes } });
