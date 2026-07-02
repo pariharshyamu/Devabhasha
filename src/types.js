@@ -41,13 +41,32 @@ const EN = {
 const isArr = t => t === 'गण' || !!(t && t.base === 'गण');
 // The element type of an array; a bare गण is unconstrained (किमपि).
 const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
-// Structural identity — used to decide an array literal's element type.
-const sameType = (a, b) =>
-  (a && a.base === 'गण' && b && b.base === 'गण') ? sameType(a.elem, b.elem) : a === b;
+// A type is an object iff it is bare वस्तु or a { base:'वस्तु' } node. A bare
+// वस्तु carries no known fields (fieldsOf → null → structurally unconstrained).
+const isObj = t => t === 'वस्तु' || !!(t && t.base === 'वस्तु');
+const fieldsOf = t => (t && t.base === 'वस्तु') ? t.fields : null;
 
-// Human-readable rendering: गण<सङ्ख्या>, and its gloss "array of number".
-const typeName = t => (t && t.base === 'गण') ? `गण<${typeName(t.elem)}>` : t;
-const typeGloss = t => (t && t.base === 'गण') ? `array of ${typeGloss(t.elem)}` : (EN[t] || '?');
+// Structural identity — used to decide an array literal's element type.
+function sameType(a, b) {
+  if (a && a.base === 'गण' && b && b.base === 'गण') return sameType(a.elem, b.elem);
+  if (a && a.base === 'वस्तु' && b && b.base === 'वस्तु') {
+    const ka = Object.keys(a.fields), kb = Object.keys(b.fields);
+    return ka.length === kb.length && ka.every(k => k in b.fields && sameType(a.fields[k], b.fields[k]));
+  }
+  return a === b;
+}
+
+// Human-readable rendering: गण<सङ्ख्या>, { नाम: अक्षर }, and their glosses.
+function typeName(t) {
+  if (t && t.base === 'गण') return `गण<${typeName(t.elem)}>`;
+  if (t && t.base === 'वस्तु') return `{ ${Object.entries(t.fields).map(([k, v]) => `${k}: ${typeName(v)}`).join(', ')} }`;
+  return t;
+}
+function typeGloss(t) {
+  if (t && t.base === 'गण') return `array of ${typeGloss(t.elem)}`;
+  if (t && t.base === 'वस्तु') return 'object';
+  return EN[t] || '?';
+}
 const show = t => `${typeName(t)} (${typeGloss(t)})`;
 
 const WARNING = 2;
@@ -56,19 +75,32 @@ const WARNING = 2;
 // annotation (unannotated) is किमपि; an unknown name is किमपि too (the caller
 // warns). A parametric गण<T> becomes a structured { base:'गण', elem }.
 function annType(ann) {
-  if (!ann || !BASE_TYPES.has(ann.name)) return ANY;
+  if (!ann) return ANY;
+  if (ann.shape) {   // object shape { key: Type, … }
+    const fields = {};
+    for (const f of ann.shape) fields[f.key] = annType(f.type);
+    return { base: 'वस्तु', fields };
+  }
+  if (!BASE_TYPES.has(ann.name)) return ANY;
   if (ann.name === 'गण' && ann.params && ann.params.length)
     return { base: 'गण', elem: annType(ann.params[0]) };
   return ann.name;
 }
 
 // Assignability: किमपि is a wildcard both ways; two arrays are compatible when
-// their element types are (bare गण's element is किमपि, so it fits anything);
-// otherwise base names must match.
+// their element types are (bare गण's element is किमपि). Objects are structural
+// with WIDTH subtyping: the expected shape's every field must be present and
+// compatible in the actual (which may carry more); a bare वस्तु on either side
+// (no known fields) is unconstrained and fits. Otherwise base names must match.
 function compatible(expected, actual) {
   if (expected == null || actual == null) return true;
   if (expected === ANY || actual === ANY) return true;
   if (isArr(expected) && isArr(actual)) return compatible(elemOf(expected), elemOf(actual));
+  if (isObj(expected) && isObj(actual)) {
+    const want = fieldsOf(expected), got = fieldsOf(actual);
+    if (!want || !got) return true;      // a bare वस्तु is unconstrained
+    return Object.keys(want).every(k => k in got && compatible(want[k], got[k]));
+  }
   return expected === actual;
 }
 
@@ -86,6 +118,7 @@ export function typeDiagnostics(source) {
   // parameters (e.g. सङ्ख्या<...>), recursing through composite params.
   const checkTypeName = ann => {
     if (!ann) return;
+    if (ann.shape) { ann.shape.forEach(f => checkTypeName(f.type)); return; }
     if (!BASE_TYPES.has(ann.name))
       warn(ann, `अज्ञातप्रकारः (unknown type '${ann.name}')`, 'unknown-type');
     else if (ann.params && ann.params.length && !PARAMETRIC.has(ann.name))
@@ -123,7 +156,24 @@ export function typeDiagnostics(source) {
       case 'Number': return 'सङ्ख्या';
       case 'String': case 'Template': return 'अक्षर';
       case 'Boolean': return 'तथ्य';
-      case 'ObjectLiteral': return 'वस्तु';
+      case 'ObjectLiteral': {
+        // A literal infers a structural shape: each field's key → its value's
+        // inferred type, so कोष { नाम: "र", वयः: ३० } is { नाम: अक्षर, वयः: सङ्ख्या }.
+        const fields = {};
+        for (const p of (node.props || [])) {
+          const k = p.key && p.key.value;
+          if (k != null) fields[k] = infer(p.value, scope);
+        }
+        return { base: 'वस्तु', fields };
+      }
+      case 'Member': {
+        // field access on a known shape flows the field's type; anything else
+        // (computed access, unknown shape, bare वस्तु) stays gradual.
+        if (node.computed) return ANY;
+        const ot = infer(node.object, scope);
+        const f = fieldsOf(ot);
+        return (f && node.property in f) ? f[node.property] : ANY;
+      }
       case 'Array': {
         // Infer the element type: गण<T> when the elements agree on a concrete
         // type, गण<किमपि> otherwise (empty, mixed, or containing anything).

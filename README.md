@@ -716,6 +716,23 @@ Array compatibility is structural on the element type, and a misplaced parameter
 on a non-container type (`सङ्ख्या<अक्षर>`) is flagged. Like the rest of the
 annotation, `<…>` is erased — the emitted JS is identical.
 
+### Object shapes — `{ नाम: अक्षर, वयः: सङ्ख्या }`
+
+`वस्तु` can be given a **structural shape** — a record of field types. An object
+literal infers its shape (`कोष { नाम: "र", वयः: ३० }` is `{ नाम: अक्षर, वयः: सङ्ख्या }`),
+field access flows the field's type, and assignment is checked field-by-field:
+
+```
+नियत व्यक्तिः: { नाम: अक्षर, वयः: सङ्ख्या } = कोष { नाम: "सीता", वयः: ३० }।
+योग(व्यक्तिः.वयः, १०)।                    # व्यक्तिः.वयः is known सङ्ख्या
+# नियत ख: { नाम: अक्षर } = कोष { वयः: ५ }।  # प्रकारभेदः: missing field नाम
+```
+
+Shapes are **structural with width subtyping**: an actual object may carry extra
+fields, but every field the expected shape names must be present and compatible.
+Shapes nest (`{ प: { x: सङ्ख्या } }`) and compose with arrays (`गण<{ id: सङ्ख्या }>`).
+A bare `वस्तु` carries no known fields, so it stays gradual — any object fits it.
+
 ### Type-aware hover
 
 Hovering an annotated binding — or any reference to one — reports its declared
@@ -1234,10 +1251,11 @@ checker).
 
 Open directions from here:
 
-1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`) with flow into
-   `प्रत्येकम्` loop variables and array-destructuring, and **type-aware hover**,
-   are **now in place**. Still open: full object shapes and first-class function
-   types in the checker (hover already shows a function's signature).
+1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`), **object shapes**
+   (`{ नाम: अक्षर }`, structural with width subtyping and field-type flow), and
+   **type-aware hover** are **now in place**. Still open: first-class function
+   types in the checker (hover already shows a function's signature) and
+   type-narrowing from `विकल्प` patterns.
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending

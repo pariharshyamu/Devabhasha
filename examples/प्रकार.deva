@@ -42,8 +42,16 @@
 नियत [प्रथम, द्वितीय] = अङ्काः।
 दर्शय("प्रथम + द्वितीय =", योग(प्रथम, द्वितीय))।   # 3
 
+# object shapes — a structural record type. Field access flows the field's
+# type, and an object literal is checked field-by-field against the shape
+# (extra fields are fine — width subtyping).
+नियत व्यक्तिः: { नाम: अक्षर, वयः: सङ्ख्या } = कोष { नाम: "सीता", वयः: ३० }।
+दर्शय(अभिवादनम्(व्यक्तिः.नाम))।       # नमस्ते, सीता  (व्यक्तिः.नाम is known अक्षर)
+दर्शय("वयः + १० =", योग(व्यक्तिः.वयः, १०))।   # 40
+
 # The following would be flagged by the analyzer (left commented so the file
 # still runs clean):
 #   योग("पञ्च", १)।              # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
 #   चर क: सङ्ख्या = "x"।         # प्रकारभेदः: declared सङ्ख्या but assigned अक्षर
 #   नियत ल: गण<अक्षर> = अङ्काः।   # प्रकारभेदः: declared गण<अक्षर> but assigned गण<सङ्ख्या>
+#   नियत ख: { नाम: अक्षर } = कोष { वयः: ५ }।   # प्रकारभेदः: missing field नाम

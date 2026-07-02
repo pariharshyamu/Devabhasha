@@ -185,6 +185,24 @@ export function parse(tokens) {
   // attached to the AST but never emitted, so the JS output is identical with
   // or without it (that is what keeps the type layer gradual and optional).
   function parseType() {
+    // object SHAPE type: { नाम: अक्षर, वयः: सङ्ख्या } — a structural record.
+    // Erasable like every annotation; the codegen never reads it.
+    if (check('OP', '{')) {
+      const lb = next();
+      const shape = [];
+      while (!check('OP', '}') && !check('EOF')) {
+        const kt = peek();
+        if (!(kt.type === 'STRING' || kt.type === 'IDENT' || KEYWORD_TOKENS.has(kt.type)))
+          throw new DevabhashaError('प्रकारदोषः: shape field name expected',
+            { line: kt.line, col: kt.col, kind: 'parse' });
+        next();
+        expect('OP', ':');
+        shape.push({ key: kt.value, type: parseType() });
+        if (check('OP', ',')) next();
+      }
+      expect('OP', '}');
+      return { shape, line: lb.line, col: lb.col };
+    }
     const t = peek();
     if (t.type !== 'IDENT') {
       throw new DevabhashaError('प्रकारदोषः: expected a type name (e.g. सङ्ख्या, अक्षर)',
