@@ -687,7 +687,9 @@ export function parse(tokens) {
 
       next(); // consume the case-marked noun
       const slot = KARAKA_TO_SLOT[a.karaka];
-      order.push(a.karaka);
+      // record role + position so semantic analysis can flag a duplicate
+      // कारक (two arguments filling the same slot — the earlier is discarded).
+      order.push({ karaka: a.karaka, slot, word: tok.value, line: tok.line, col: tok.col });
 
       // वचन agreement: a plural कर्तृ (nominative tag, e.g. पटाः "buttons")
       // means the element distributes over the समास children — one element

@@ -59,5 +59,25 @@ ok('diagnostics(): parse error still error (severity 1)',
 ok('diagnostics(): parse error suppresses semantic pass',
    diagnostics('चर = ५।').length === 1);
 
+// ---------- duplicate कारक in रचय ----------
+ok('duplicate कर्तृ (two tags)', has('रचय पटः मूलः।', 'duplicate-karaka'));
+ok('duplicate कर्म (two contents)', has('रचय पटः वाक्यम् "a" वाक्यम् "b"।', 'duplicate-karaka'));
+ok('duplicate करण (two handlers)', has('रचय पटः करणेन क करणेन ख।', 'duplicate-karaka'));
+ok('distinct roles are clean',
+   !has('चर ह = कार्य(){}। रचय पटः वाक्यम् "x" स्पर्शाय करणेन ह।', 'duplicate-karaka'));
+ok('duplicate names the कारक',
+   /कर्तृ/.test(semanticDiagnostics('रचय पटः मूलः।').find(d => d.kind === 'duplicate-karaka').message));
+ok('duplicate reports override order (मूलः overrides पटः)', (() => {
+  const d = semanticDiagnostics('रचय पटः मूलः।').find(x => x.kind === 'duplicate-karaka');
+  return d && /मूलः/.test(d.message) && /पटः/.test(d.message) &&
+    d.message.indexOf('मूलः') < d.message.indexOf('पटः');   // "'मूलः' overrides 'पटः'"
+})());
+
+// undefined names inside a रचय slot are now reached
+ok('undefined in रचय content slot',
+   has('योजय(रचय पटः वाक्यम् अज्ञातम्)।', 'undefined'));
+ok('undefined in रचय handler slot',
+   has('रचय पटः स्पर्शाय करणेन अपरिचितः।', 'undefined'));
+
 console.log(`\n${pass} पास, ${fail} फेल`);
 process.exit(fail ? 1 : 0);

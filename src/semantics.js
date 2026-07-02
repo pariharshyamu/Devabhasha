@@ -21,6 +21,7 @@ import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
 import { GLOBALS } from './stdlib.js';
 import { STYLE_VALUES } from './style.js';
+import { KARAKA_NAME_SA } from './vibhakti.js';
 
 const KNOWN_GLOBALS = new Set(Object.keys(GLOBALS));
 const STYLE_WORDS = new Set(Object.keys(STYLE_VALUES));
@@ -184,6 +185,30 @@ export function semanticDiagnostics(source) {
         walkExpr(node.object, scope);
         if (node.computed) walkExpr(node.property, scope);
         return;                       // non-computed property is not a reference
+      case 'Construct': {
+        // duplicate कारक: two arguments whose vibhakti maps to the same DOM
+        // slot — free word order means position doesn't disambiguate them, so
+        // the earlier value is silently overwritten. Almost always a mistake.
+        const firstBySlot = new Map();
+        for (const o of node.order || []) {
+          const prev = firstBySlot.get(o.slot);
+          if (prev) {
+            warn({ line: o.line, col: o.col },
+              `पुनरुक्तकारकम् (duplicate ${KARAKA_NAME_SA[o.karaka]}-कारक: '${o.word}' overrides '${prev.word}')`,
+              'duplicate-karaka');
+          } else {
+            firstBySlot.set(o.slot, o);
+          }
+        }
+        // walk the value expressions so undefined names inside a रचय are caught
+        for (const k of Object.keys(node.slots || {})) walkExpr(node.slots[k], scope);
+        if (node.style) {
+          node.style.base && walkExpr(node.style.base, scope);
+          (node.style.pairs || []).forEach(p => p.value?.kind === 'expr' && walkExpr(p.value.value, scope));
+        }
+        (node.children || []).forEach(c => walkExpr(c, scope));
+        return;
+      }
       case 'FuncExpr': {
         const fscope = makeScope(scope);
         node.params.forEach(p => declare(fscope, p));

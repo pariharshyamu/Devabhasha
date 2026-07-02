@@ -751,6 +751,27 @@ The analysis is pure functions in `src/analyzer.js` (`diagnostics`,
 `server.js` is a thin JSON-RPC wrapper, so the same engine can power other
 front-ends.
 
+**Semantic analysis.** Beyond syntax, `src/semantics.js` runs a meaning-level
+pass and folds its findings into `diagnostics()` as **warnings** — a syntax
+error is still reported alone (the AST is unusable), but a *clean parse* yields
+the semantic warnings:
+
+- **undefined names** — a reference bound nowhere in scope (and not a known
+  Sanskrit global or style word). Scopes hoist, so forward references and
+  mutual recursion don't false-positive;
+- **unreachable code** — statements after `फलम्`/`भङ्ग`/`अनुवृत्तम्`;
+- **arity mismatch** — a call to a fixed-arity local function (a `कार्य`
+  declaration or a `नियत` function) with the wrong argument count;
+- **duplicate कारक** — two arguments in one `रचय` whose vibhakti maps to the
+  same slot (e.g. two nominatives, or two `वाक्यम्` contents). Since word order
+  is free, position can't disambiguate them, so the earlier value is silently
+  overwritten — almost always a mistake. The warning names the कारक and the
+  overriding word.
+
+The pass is fail-safe (never throws) and validated to produce **zero false
+positives across every example** — it is in fact what surfaced (and led to the
+fix of) a latent indent bug in the self-hosted `codegen.deva`.
+
 ## सञ्चिका / जाल — file & network I/O
 
 I/O is **layered**: a program calls the Sanskrit surface (`सञ्चिका` for
