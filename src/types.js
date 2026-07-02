@@ -22,6 +22,7 @@
 
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
+import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
 
 const ANY = 'किमपि';
 const VOID = 'रिक्त';
@@ -40,13 +41,39 @@ const EN = {
 const isArr = t => t === 'गण' || !!(t && t.base === 'गण');
 // The element type of an array; a bare गण is unconstrained (किमपि).
 const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
-// Structural identity — used to decide an array literal's element type.
-const sameType = (a, b) =>
-  (a && a.base === 'गण' && b && b.base === 'गण') ? sameType(a.elem, b.elem) : a === b;
+// A type is an object iff it is bare वस्तु or a { base:'वस्तु' } node. A bare
+// वस्तु carries no known fields (fieldsOf → null → structurally unconstrained).
+const isObj = t => t === 'वस्तु' || !!(t && t.base === 'वस्तु');
+const fieldsOf = t => (t && t.base === 'वस्तु') ? t.fields : null;
+// A function type: { base:'कार्य', params:[type], ret:type }.
+const isFn = t => !!(t && t.base === 'कार्य');
 
-// Human-readable rendering: गण<सङ्ख्या>, and its gloss "array of number".
-const typeName = t => (t && t.base === 'गण') ? `गण<${typeName(t.elem)}>` : t;
-const typeGloss = t => (t && t.base === 'गण') ? `array of ${typeGloss(t.elem)}` : (EN[t] || '?');
+// Structural identity — used to decide an array literal's element type.
+function sameType(a, b) {
+  if (a && a.base === 'गण' && b && b.base === 'गण') return sameType(a.elem, b.elem);
+  if (a && a.base === 'वस्तु' && b && b.base === 'वस्तु') {
+    const ka = Object.keys(a.fields), kb = Object.keys(b.fields);
+    return ka.length === kb.length && ka.every(k => k in b.fields && sameType(a.fields[k], b.fields[k]));
+  }
+  if (isFn(a) && isFn(b))
+    return a.params.length === b.params.length &&
+      a.params.every((p, i) => sameType(p, b.params[i])) && sameType(a.ret, b.ret);
+  return a === b;
+}
+
+// Human-readable rendering: गण<सङ्ख्या>, { नाम: अक्षर }, कार्य(सङ्ख्या): तथ्य.
+function typeName(t) {
+  if (t && t.base === 'गण') return `गण<${typeName(t.elem)}>`;
+  if (t && t.base === 'वस्तु') return `{ ${Object.entries(t.fields).map(([k, v]) => `${k}: ${typeName(v)}`).join(', ')} }`;
+  if (isFn(t)) return `कार्य(${t.params.map(typeName).join(', ')}): ${typeName(t.ret)}`;
+  return t;
+}
+function typeGloss(t) {
+  if (t && t.base === 'गण') return `array of ${typeGloss(t.elem)}`;
+  if (t && t.base === 'वस्तु') return 'object';
+  if (isFn(t)) return 'function';
+  return EN[t] || '?';
+}
 const show = t => `${typeName(t)} (${typeGloss(t)})`;
 
 const WARNING = 2;
@@ -55,19 +82,39 @@ const WARNING = 2;
 // annotation (unannotated) is किमपि; an unknown name is किमपि too (the caller
 // warns). A parametric गण<T> becomes a structured { base:'गण', elem }.
 function annType(ann) {
-  if (!ann || !BASE_TYPES.has(ann.name)) return ANY;
+  if (!ann) return ANY;
+  if (ann.shape) {   // object shape { key: Type, … }
+    const fields = {};
+    for (const f of ann.shape) fields[f.key] = annType(f.type);
+    return { base: 'वस्तु', fields };
+  }
+  if (ann.fn)        // function type कार्य(params): ret
+    return { base: 'कार्य', params: ann.fn.params.map(annType), ret: ann.fn.ret ? annType(ann.fn.ret) : ANY };
+  if (!BASE_TYPES.has(ann.name)) return ANY;
   if (ann.name === 'गण' && ann.params && ann.params.length)
     return { base: 'गण', elem: annType(ann.params[0]) };
   return ann.name;
 }
 
 // Assignability: किमपि is a wildcard both ways; two arrays are compatible when
-// their element types are (bare गण's element is किमपि, so it fits anything);
-// otherwise base names must match.
+// their element types are (bare गण's element is किमपि). Objects are structural
+// with WIDTH subtyping: the expected shape's every field must be present and
+// compatible in the actual (which may carry more); a bare वस्तु on either side
+// (no known fields) is unconstrained and fits. Otherwise base names must match.
 function compatible(expected, actual) {
   if (expected == null || actual == null) return true;
   if (expected === ANY || actual === ANY) return true;
   if (isArr(expected) && isArr(actual)) return compatible(elemOf(expected), elemOf(actual));
+  if (isObj(expected) && isObj(actual)) {
+    const want = fieldsOf(expected), got = fieldsOf(actual);
+    if (!want || !got) return true;      // a bare वस्तु is unconstrained
+    return Object.keys(want).every(k => k in got && compatible(want[k], got[k]));
+  }
+  if (isFn(expected) && isFn(actual)) {  // same arity, params + return compatible
+    return expected.params.length === actual.params.length &&
+      expected.params.every((p, i) => compatible(p, actual.params[i])) &&
+      compatible(expected.ret, actual.ret);
+  }
   return expected === actual;
 }
 
@@ -85,6 +132,8 @@ export function typeDiagnostics(source) {
   // parameters (e.g. सङ्ख्या<...>), recursing through composite params.
   const checkTypeName = ann => {
     if (!ann) return;
+    if (ann.shape) { ann.shape.forEach(f => checkTypeName(f.type)); return; }
+    if (ann.fn) { ann.fn.params.forEach(checkTypeName); checkTypeName(ann.fn.ret); return; }
     if (!BASE_TYPES.has(ann.name))
       warn(ann, `अज्ञातप्रकारः (unknown type '${ann.name}')`, 'unknown-type');
     else if (ann.params && ann.params.length && !PARAMETRIC.has(ann.name))
@@ -122,7 +171,24 @@ export function typeDiagnostics(source) {
       case 'Number': return 'सङ्ख्या';
       case 'String': case 'Template': return 'अक्षर';
       case 'Boolean': return 'तथ्य';
-      case 'ObjectLiteral': return 'वस्तु';
+      case 'ObjectLiteral': {
+        // A literal infers a structural shape: each field's key → its value's
+        // inferred type, so कोष { नाम: "र", वयः: ३० } is { नाम: अक्षर, वयः: सङ्ख्या }.
+        const fields = {};
+        for (const p of (node.props || [])) {
+          const k = p.key && p.key.value;
+          if (k != null) fields[k] = infer(p.value, scope);
+        }
+        return { base: 'वस्तु', fields };
+      }
+      case 'Member': {
+        // field access on a known shape flows the field's type; anything else
+        // (computed access, unknown shape, bare वस्तु) stays gradual.
+        if (node.computed) return ANY;
+        const ot = infer(node.object, scope);
+        const f = fieldsOf(ot);
+        return (f && node.property in f) ? f[node.property] : ANY;
+      }
       case 'Array': {
         // Infer the element type: गण<T> when the elements agree on a concrete
         // type, गण<किमपि> otherwise (empty, mixed, or containing anything).
@@ -136,13 +202,20 @@ export function typeDiagnostics(source) {
       }
       case 'Null': return ANY;
       case 'Identifier': return getVar(scope, node.name);
+      case 'FuncExpr': {
+        // a function expression's own type, from its annotations (body-return
+        // inference stays gradual — an unannotated return is किमपि).
+        const params = (node.paramTypes || node.params.map(() => null)).map(annType);
+        return { base: 'कार्य', params, ret: node.returnType ? annType(node.returnType) : ANY };
+      }
       case 'Call': {
         const c = node.callee;
         if (c && c.type === 'Identifier' && sigs.has(c.name)) {
           const rt = sigs.get(c.name).returnType;
           return rt == null ? ANY : rt;
         }
-        return ANY;
+        const ct = infer(c, scope);         // a function-typed value → its ret
+        return isFn(ct) ? ct.ret : ANY;
       }
       case 'Unary': return node.op === '!' ? 'तथ्य' : node.op === '-' ? 'सङ्ख्या' : ANY;
       case 'Binary': {
@@ -249,8 +322,18 @@ export function typeDiagnostics(source) {
       case 'Switch':
         walkExpr(node.discriminant, scope);
         (node.cases || []).forEach(c => {
-          (c.tests || []).forEach(t => walkExpr(t, scope));
-          walkBody(c.body, makeScope(scope), ret);
+          const cscope = makeScope(scope);
+          for (const t of (c.tests || [])) {
+            // pattern tests bind names (typed किमपि — the shape isn't tracked
+            // yet) and constrain with value expressions; value tests are exprs.
+            if (isMatchPattern(t)) {
+              patternConstraints(t).forEach(e => walkExpr(e, scope));
+              patternBindings(t).forEach(b => setVar(cscope, b.name, ANY));
+            } else {
+              walkExpr(t, scope);
+            }
+          }
+          walkBody(c.body, cscope, ret);
         });
         return;
       case 'Block': walkBody(node.body, makeScope(scope), ret); return;
@@ -267,8 +350,13 @@ export function typeDiagnostics(source) {
 
   function checkCall(node, scope) {
     const c = node.callee;
-    if (!c || c.type !== 'Identifier' || !sigs.has(c.name)) return;
-    const { paramTypes } = sigs.get(c.name);
+    // A callee's parameter types come from a hoisted signature (named function),
+    // or from an inferred function TYPE (a कार्य-typed variable/parameter).
+    let paramTypes = null, name = null;
+    if (c && c.type === 'Identifier' && sigs.has(c.name)) { paramTypes = sigs.get(c.name).paramTypes; name = c.name; }
+    else { const ct = infer(c, scope); if (isFn(ct)) { paramTypes = ct.params; name = c && c.name; } }
+    if (!paramTypes) return;
+    const label = name ? `'${name}'` : 'the function';
     const args = node.args || [];
     for (let i = 0; i < Math.min(args.length, paramTypes.length); i++) {
       const want = paramTypes[i];
@@ -276,9 +364,9 @@ export function typeDiagnostics(source) {
       const got = infer(args[i], scope);
       if (!compatible(want, got)) {
         // literal args carry no position; fall back to the callee's.
-        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : c;
+        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : (c && c.line != null ? c : node);
         warn(pos,
-          `प्रकारभेदः (argument ${i + 1} of '${c.name}' expects ${show(want)}, got ${show(got)})`,
+          `प्रकारभेदः (argument ${i + 1} of ${label} expects ${show(want)}, got ${show(got)})`,
           'type-arg');
       }
     }
@@ -310,4 +398,47 @@ export function typeDiagnostics(source) {
   try { walkBody(ast, makeScope(null), null); }
   catch { return []; }
   return diags;
+}
+
+// ---- type-aware hover ----
+// The DECLARED type at a binding position (line, col) — the annotation on the
+// VarDecl / parameter / function it introduces — or null when that binding is
+// unannotated (types are optional, so most bindings have none). This drives
+// type-aware hover: no inference is done, so only explicitly-typed bindings
+// report a type. Returns { display } where display is a human string, plus
+// `tag` (the type) for a value or `fn: true` for a function.
+export function declaredTypeAt(source, line, col) {
+  let ast;
+  try { ast = parse(tokenize(source)); } catch { return null; }
+  const at = pos => pos && pos.line === line && pos.col === col;
+  const fnSig = node => {
+    const ps = (node.paramTypes || node.params.map(() => null))
+      .map(a => a ? typeName(annType(a)) : '?');
+    const rt = node.returnType ? typeName(annType(node.returnType)) : '?';
+    return `(${ps.join(', ')}) → ${rt}`;
+  };
+  let found = null;
+  const visit = node => {
+    if (found || !node || typeof node !== 'object') return;
+    if (node.type === 'VarDecl') {
+      if (at(node.namePos)) {
+        if (node.varType) { found = { display: show(annType(node.varType)), tag: annType(node.varType) }; return; }
+        if (node.init && node.init.type === 'FuncExpr') { found = { display: `${fnSig(node.init)} (function)`, fn: true }; return; }
+      }
+    } else if (node.type === 'FuncDecl') {
+      if (at(node.namePos)) { found = { display: `${fnSig(node)} (function)`, fn: true }; return; }
+      (node.paramPos || []).forEach((p, i) => {
+        if (!found && at(p) && node.paramTypes && node.paramTypes[i])
+          found = { display: show(annType(node.paramTypes[i])), tag: annType(node.paramTypes[i]) };
+      });
+    }
+    for (const k of Object.keys(node)) {
+      if (found) return;
+      const v = node[k];
+      if (Array.isArray(v)) v.forEach(visit);
+      else if (v && typeof v === 'object') visit(v);
+    }
+  };
+  (Array.isArray(ast) ? ast : [ast]).forEach(visit);
+  return found;
 }

@@ -11,7 +11,7 @@
 // running `node src/server.js`. The analysis itself lives in analyzer.js;
 // this file is purely the protocol.
 
-import { diagnostics, completions, hover, wordAt, definition, renameOccurrences } from './analyzer.js';
+import { diagnostics, completions, hover, hoverAt, wordAt, definition, renameOccurrences } from './analyzer.js';
 
 // ---- LSP completion-item kinds (subset) ----
 const CIK = { keyword: 14, method: 2, property: 10, constant: 21, function: 3,
@@ -126,11 +126,13 @@ function handle(msg) {
     }
 
     case 'textDocument/hover': {
-      const { word } = wordAtPosition(params.textDocument.uri, params.position);
-      const h = hover(word);
+      const text = docs.get(params.textDocument.uri) || '';
+      // position-aware: enrich the word's meaning with its declared type
+      const h = hoverAt(text, params.position.line + 1, params.position.character + 1);
       if (!h) { reply(id, null); break; }
+      const typeLine = h.type ? `\n\n\`${h.type}\`` : '';
       reply(id, {
-        contents: { kind: 'markdown', value: `**${h.label}** — ${h.detail}\n\n${h.doc}` },
+        contents: { kind: 'markdown', value: `**${h.label}** — ${h.detail}\n\n${h.doc}${typeLine}` },
       });
       break;
     }

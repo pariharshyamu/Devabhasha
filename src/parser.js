@@ -185,6 +185,39 @@ export function parse(tokens) {
   // attached to the AST but never emitted, so the JS output is identical with
   // or without it (that is what keeps the type layer gradual and optional).
   function parseType() {
+    // object SHAPE type: { नाम: अक्षर, वयः: सङ्ख्या } — a structural record.
+    // Erasable like every annotation; the codegen never reads it.
+    if (check('OP', '{')) {
+      const lb = next();
+      const shape = [];
+      while (!check('OP', '}') && !check('EOF')) {
+        const kt = peek();
+        if (!(kt.type === 'STRING' || kt.type === 'IDENT' || KEYWORD_TOKENS.has(kt.type)))
+          throw new DevabhashaError('प्रकारदोषः: shape field name expected',
+            { line: kt.line, col: kt.col, kind: 'parse' });
+        next();
+        expect('OP', ':');
+        shape.push({ key: kt.value, type: parseType() });
+        if (check('OP', ',')) next();
+      }
+      expect('OP', '}');
+      return { shape, line: lb.line, col: lb.col };
+    }
+    // function type: कार्य(सङ्ख्या, अक्षर): तथ्य — reuses the कार्य keyword, so
+    // no new operator is needed. The `: ret` is optional (defaults to किमपि).
+    if (check('FUNC')) {
+      const ft = next();
+      expect('OP', '(');
+      const params = [];
+      while (!check('OP', ')') && !check('EOF')) {
+        params.push(parseType());
+        if (check('OP', ',')) next();
+      }
+      expect('OP', ')');
+      let ret = null;
+      if (check('OP', ':')) { next(); ret = parseType(); }
+      return { fn: { params, ret }, line: ft.line, col: ft.col };
+    }
     const t = peek();
     if (t.type !== 'IDENT') {
       throw new DevabhashaError('प्रकारदोषः: expected a type name (e.g. सङ्ख्या, अक्षर)',
@@ -263,8 +296,8 @@ export function parse(tokens) {
       let tests = null;
       if (check('CASE')) {
         next(); // CASE
-        tests = [parseExpression()];
-        while (check('OP', ',')) { next(); tests.push(parseExpression()); }
+        tests = [parseCaseTest()];
+        while (check('OP', ',')) { next(); tests.push(parseCaseTest()); }
       } else if (check('ELSE')) {
         next(); // ELSE → default
       } else {
@@ -283,6 +316,78 @@ export function parse(tokens) {
     }
     expect('OP', '}');
     return { type: 'Switch', discriminant, cases };
+  }
+
+  // A स्थिति test is either a plain value expression (matched with ===, the
+  // original behaviour) or a structural PATTERN — an object shape कोष { … } or
+  // an array [ … ]. Patterns match by shape and bind names; they are recognised
+  // by their leading token, so ordinary value cases are entirely unaffected.
+  function parseCaseTest() {
+    if (check('OBJECT')) return parseMatchObject();
+    if (check('OP', '[')) return parseMatchArray();
+    return parseExpression();
+  }
+
+  // A sub-pattern in value position (after a `:` in an object, or as an array
+  // element). कोष / [ recurse into a nested pattern; a bare identifier is a
+  // BINDING; anything else is a CONSTRAINT expression (the value must ===).
+  //   कोष { प्रकार: "If" }        प्रकार must === "If"       (const)
+  //   कोष { देहः }                 bind देहः = disc.देहः      (bind, shorthand)
+  //   कोष { मूलम्: नाम }           bind नाम = disc.मूलम्      (bind, aliased)
+  //   कोष { स्थानम्: कोष { x: ० }} nested object pattern      (nested)
+  function classifyValue(kind) {
+    if (check('OBJECT') || check('OP', '[')) return { kind: 'nested', sub: parseCaseTest() };
+    const t = peek();
+    if (t.type === 'IDENT') { next(); return { kind: 'bind', name: t.value, line: t.line, col: t.col }; }
+    return { kind: 'const', value: parseExpression() };
+  }
+
+  // कोष { प्रकार: "If", देहः, मूलम्: नाम, स्थानम्: कोष { … } } — an object
+  // pattern with constraints, shorthand/aliased bindings, and nested patterns.
+  // Matches a non-null object satisfying every constraint and carrying every key.
+  function parseMatchObject() {
+    const kt = next(); // OBJECT
+    expect('OP', '{');
+    const props = [];
+    while (!check('OP', '}') && !check('EOF')) {
+      const t = peek();
+      if (!(t.type === 'STRING' || t.type === 'IDENT' || KEYWORD_TOKENS.has(t.type)))
+        throw new DevabhashaError('विन्यासदोषः: pattern key must be a name or string',
+          { line: t.line, col: t.col, kind: 'parse' });
+      next();
+      const key = t.value;
+      let prop;
+      if (check('OP', ':')) { next(); prop = { key, ...classifyValue(), line: t.line, col: t.col }; }
+      else prop = { key, kind: 'bind', name: key, line: t.line, col: t.col };   // shorthand
+      // shorthand/aliased bind position: prefer the binding-name token if present
+      if (prop.kind === 'bind' && prop.name === key) { prop.line = t.line; prop.col = t.col; }
+      props.push(prop);
+      if (check('OP', ',')) next();
+    }
+    expect('OP', '}');
+    return { type: 'MatchObject', props, line: kt.line, col: kt.col };
+  }
+
+  // [ अ, ब, ०, ...शेषम् ] — an array pattern. Each element is a BINDING
+  // (identifier), a CONSTRAINT (literal), or a nested pattern; an optional
+  // trailing `...name` binds the remaining elements. Without a rest the length
+  // must match exactly; with one it must be at least the fixed count.
+  function parseMatchArray() {
+    const lb = expect('OP', '[');
+    const elements = [];
+    let rest = null;
+    while (!check('OP', ']') && !check('EOF')) {
+      if (check('OP', '...')) {
+        next();
+        const rt = expect('IDENT');
+        rest = { name: rt.value, line: rt.line, col: rt.col };
+        break;                       // rest must be the final element
+      }
+      elements.push(classifyValue());
+      if (check('OP', ',')) next();
+    }
+    expect('OP', ']');
+    return { type: 'MatchArray', elements, rest, line: lb.line, col: lb.col };
   }
 
   // प्रत्येकम् (वस्तु : समूह) { ... }  → for (const वस्तु of समूह)
@@ -716,6 +821,7 @@ export function parse(tokens) {
     const slots = {};   // slotName -> AST/value
     const order = [];   // record kāraka order purely for diagnostics
     let plural = false;  // बहुवचन on the कर्तृ (tag) → an element GROUP
+    let dual = false;    // द्विवचन on the कर्तृ (tag) → a PAIR (a group of two)
 
     while (true) {
       const tok = peek();
@@ -731,8 +837,11 @@ export function parse(tokens) {
       // वचन agreement: a plural कर्तृ (nominative tag, e.g. पटाः "buttons")
       // means the element distributes over the समास children — one element
       // per child. The role is number-invariant; only the tag's number
-      // switches single-element vs. group construction.
+      // switches single-element vs. group construction. A द्विवचन कर्तृ (e.g.
+      // पटौ "two buttons") is a PAIR — a group the grammar expects to hold
+      // exactly two children (checked in semantic analysis).
       if (a.karaka === KARAKA.KARTR && a.number === VACANA.BAHU) plural = true;
+      if (a.karaka === KARAKA.KARTR && a.number === VACANA.DVI) dual = true;
 
       if (slot === 'tag' && TAG_STEMS[a.stem]) {
         slots.tag = { type: 'String', value: TAG_STEMS[a.stem] };
@@ -785,7 +894,7 @@ export function parse(tokens) {
       expect('OP', '}');
     }
 
-    return { type: 'Construct', slots, order, children, style, plural };
+    return { type: 'Construct', slots, order, children, style, plural, dual };
   }
 
   // कोष { कुञ्जी: मूल्यम्, अन्या: मूल्यम् }  →  object literal

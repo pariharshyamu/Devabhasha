@@ -1,6 +1,8 @@
 // tooling.test.js — source maps + language-server analysis + LSP protocol.
 import { compileWithMap } from '../src/index.js';
-import { diagnostics, completions, hover, wordAt, VOCAB } from '../src/analyzer.js';
+import { diagnostics, completions, hover, hoverAt, wordAt, VOCAB } from '../src/analyzer.js';
+import { parse } from '../src/parser.js';
+import { tokenize } from '../src/lexer.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -76,6 +78,38 @@ ok('hover: color value', hover('रक्तः').detail === 'crimson');
 ok('hover: math method', hover('वर्गमूलम्') && /sqrt/.test(hover('वर्गमूलम्').detail));
 ok('hover: keyword', hover('कार्य') && /function/.test(hover('कार्य').doc));
 ok('hover: unknown word → null', hover('अपरिचितम्') === null);
+
+// ---------- analyzer: type-aware hover (hoverAt) ----------
+// Use the parser's own recorded positions so the columns match the lexer
+// exactly (Devanagari clusters make raw string indices unreliable).
+{
+  const src = [
+    'कार्य योग (अ: सङ्ख्या): सङ्ख्या {',   // 1
+    '    फलम् अ।',                           // 2
+    '}',                                     // 3
+    'नियत आधारः: सङ्ख्या = योग(१)।',        // 4
+    'नियत माला: गण<अक्षर> = ["क"]।',         // 5
+    'दर्शय(आधारः)।',                         // 6
+  ].join('\n');
+  const a = parse(tokenize(src)); const ast = a.body || a;
+  const fn = ast.find(n => n.type === 'FuncDecl');
+  const v1 = ast.find(n => n.type === 'VarDecl' && n.name === 'आधारः');
+  const v2 = ast.find(n => n.type === 'VarDecl' && n.name === 'माला');
+  const useTok = tokenize(src).find(t => t.value === 'आधारः' && t.line === 6);
+  const typeAt = pos => (hoverAt(src, pos.line, pos.col) || {}).type;
+
+  ok('hoverAt: typed variable declaration', typeAt(v1.namePos) === 'सङ्ख्या (number)');
+  ok('hoverAt: composite गण<अक्षर> type', typeAt(v2.namePos) === 'गण<अक्षर> (array of string)');
+  ok('hoverAt: typed parameter', typeAt(fn.paramPos[0]) === 'सङ्ख्या (number)');
+  ok('hoverAt: function shows a signature',
+     /\(सङ्ख्या\) → सङ्ख्या \(function\)/.test(typeAt(fn.namePos) || ''));
+  ok('hoverAt: a reference reports its binding’s type',
+     typeAt({ line: 6, col: useTok.col }) === 'सङ्ख्या (number)');
+  ok('hoverAt: unannotated binding has no type',
+     (() => { const s = 'नियत क = ५।'; const n = (parse(tokenize(s)).body || parse(tokenize(s)))[0];
+              return typeAtOf(s, n.namePos) === undefined; })());
+  function typeAtOf(s, pos) { return (hoverAt(s, pos.line, pos.col) || {}).type; }
+}
 
 // ---------- analyzer: wordAt ----------
 {

@@ -22,6 +22,7 @@ import { parse } from './parser.js';
 import { GLOBALS } from './stdlib.js';
 import { STYLE_VALUES } from './style.js';
 import { KARAKA_NAME_SA } from './vibhakti.js';
+import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
 
 const KNOWN_GLOBALS = new Set(Object.keys(GLOBALS));
 const STYLE_WORDS = new Set(Object.keys(STYLE_VALUES));
@@ -139,8 +140,18 @@ export function semanticDiagnostics(source) {
       case 'Switch':
         walkExpr(node.discriminant, scope);
         for (const c of node.cases) {
-          (c.tests || []).forEach(t => walkExpr(t, scope));
-          walkBody(c.body, makeScope(scope));   // each branch is its own scope
+          const cscope = makeScope(scope);        // each branch is its own scope
+          for (const t of (c.tests || [])) {
+            // a pattern binds names into the branch and constrains with value
+            // expressions; a plain value test is just an expression.
+            if (isMatchPattern(t)) {
+              patternConstraints(t).forEach(e => walkExpr(e, scope));
+              patternBindings(t).forEach(b => declare(cscope, b.name));
+            } else {
+              walkExpr(t, scope);
+            }
+          }
+          walkBody(c.body, cscope);
         }
         return;
       case 'Block':
@@ -198,6 +209,19 @@ export function semanticDiagnostics(source) {
               'duplicate-karaka');
           } else {
             firstBySlot.set(o.slot, o);
+          }
+        }
+        // वचन agreement: a द्विवचन कर्तृ (पटौ "two buttons") is a PAIR — it
+        // distributes over exactly two समास children, one element each. Any
+        // other count contradicts the dual. (बहुवचन is a group of any size, so
+        // it is not checked.) Anchored at the कर्तृ so the fix is obvious.
+        if (node.dual) {
+          const n = (node.children || []).length;
+          if (n !== 2) {
+            const kartr = (node.order || []).find(o => o.slot === 'tag');
+            warn(kartr && { line: kartr.line, col: kartr.col },
+              `वचनभेदः (द्विवचन '${kartr ? kartr.word : ''}' is a pair — expected two समास children, got ${n})`,
+              'vacana-agreement');
           }
         }
         // walk the value expressions so undefined names inside a रचय are caught

@@ -18,6 +18,14 @@
     "लोपय"        # Delete
 }।
 
+# द्विवचन — a dual कर्तृ (पटौ "two buttons") is a PAIR: it builds exactly two
+# elements, one per child, like a plural that means "two". The analyzer warns
+# (वचनभेदः) if a dual doesn't hold exactly two समास children.
+नियत युग्मम् = रचय पटौ रूप { अन्तरालः: "8px 16px" } {
+    "हाँ"         # yes
+    "नहीं"        # no
+}।
+
 # a plural inside a container flattens into siblings (no extra wrapper):
 #   <div><p>प्रथमम्</p><p>द्वितीयम्</p></div>
 नियत पृष्ठम् = रचय मूलः {
@@ -40,5 +48,6 @@
 
 योजय(एकः)।
 योजय(गणः)।
+योजय(युग्मम्)।
 योजय(पृष्ठम्)।
 योजय(सूचिका)।

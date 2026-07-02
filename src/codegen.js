@@ -353,6 +353,9 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
   const namespaceAliases = new Set();
   // async-context depth: प्रतीक्षा (await) is only valid when > 0
   let asyncDepth = 0;
+  // unique temp counter for pattern-matching विकल्प (each holds the evaluated
+  // discriminant in its own block-scoped const, so nested matches don't clash)
+  let matchCounter = 0;
   // inside a रूप style-value expression: bare color/style words → CSS literals
   let inStyleValue = false;
 
@@ -465,6 +468,13 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         genBlock(node.body, indent);
         break;
       case 'Switch': {
+        // A विकल्प whose स्थिति tests are all plain VALUES compiles to a JS
+        // switch (below). A विकल्प that uses any structural PATTERN (an object
+        // shape or array) instead compiles to an if/else-if chain that shape-
+        // tests the discriminant and binds names — see genMatchChain. Keeping
+        // value-only switches on the switch path leaves their output (and the
+        // bootstrap fixpoint) byte-for-byte unchanged.
+        if (switchHasPattern(node)) { genMatchChain(node, indent); break; }
         // Each branch is self-contained: a block scope + implicit break, so
         // there is no C-style fall-through. Comma-separated tests stack as
         // consecutive `case` labels sharing one body.
@@ -512,6 +522,98 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
     const inner = indent + '  ';
     emit('{\n');
     block.body.forEach(s => { emit(inner); genStatement(s, inner); emit('\n'); });
+    emit(indent + '}');
+  }
+
+  // ---- pattern-matching विकल्प ----
+  const isMatchPattern = t => t && (t.type === 'MatchObject' || t.type === 'MatchArray');
+  const switchHasPattern = node =>
+    node.cases.some(c => (c.tests || []).some(isMatchPattern));
+
+  // Emit the boolean shape-test for one स्थिति test against `access` (a JS
+  // expression string for the value being matched — the discriminant temp at
+  // top level, or an element/field accessor when recursing into a nested
+  // pattern). A plain value test is a === comparison.
+  function emitMatchTest(t, access) {
+    if (t.type === 'MatchObject') {
+      emit(`(${access} != null && typeof ${access} === "object"`);
+      for (const p of t.props) {
+        const field = `${access}[${JSON.stringify(p.key)}]`;
+        if (p.kind === 'const') { emit(` && ${field} === `); genExpr(p.value); }
+        else if (p.kind === 'nested') { emit(' && '); emitMatchTest(p.sub, field); }
+        else emit(` && ${JSON.stringify(p.key)} in ${access}`);   // a binding requires the key
+      }
+      emit(')');
+    } else if (t.type === 'MatchArray') {
+      const cmp = t.rest ? '>=' : '===';
+      emit(`(Array.isArray(${access}) && ${access}.length ${cmp} ${t.elements.length}`);
+      t.elements.forEach((e, i) => {
+        const at = `${access}[${i}]`;
+        if (e.kind === 'const') { emit(` && ${at} === `); genExpr(e.value); }
+        else if (e.kind === 'nested') { emit(' && '); emitMatchTest(e.sub, at); }
+      });
+      emit(')');
+    } else {
+      emit(`${access} === `); genExpr(t);
+    }
+  }
+
+  // Emit `const <name> = <access>;` for every binding a pattern introduces,
+  // recursing into nested patterns and honouring an array rest (a .slice of the
+  // tail). `seen` dedupes names bound by more than one alternative in a case.
+  function emitPatternBinds(pat, access, bodyIndent, seen) {
+    if (pat.type === 'MatchObject') {
+      for (const p of pat.props) {
+        const field = `${access}[${JSON.stringify(p.key)}]`;
+        if (p.kind === 'bind' && !seen.has(p.name)) {
+          seen.add(p.name); emit(`${bodyIndent}const ${id(p.name)} = ${field};\n`);
+        } else if (p.kind === 'nested') emitPatternBinds(p.sub, field, bodyIndent, seen);
+      }
+    } else if (pat.type === 'MatchArray') {
+      pat.elements.forEach((e, i) => {
+        const at = `${access}[${i}]`;
+        if (e.kind === 'bind' && !seen.has(e.name)) {
+          seen.add(e.name); emit(`${bodyIndent}const ${id(e.name)} = ${at};\n`);
+        } else if (e.kind === 'nested') emitPatternBinds(e.sub, at, bodyIndent, seen);
+      });
+      if (pat.rest && !seen.has(pat.rest.name)) {
+        seen.add(pat.rest.name);
+        emit(`${bodyIndent}const ${id(pat.rest.name)} = ${access}.slice(${pat.elements.length});\n`);
+      }
+    }
+  }
+
+  function emitMatchBinds(tests, disc, bodyIndent) {
+    const seen = new Set();
+    for (const t of tests) if (isMatchPattern(t)) emitPatternBinds(t, disc, bodyIndent, seen);
+  }
+
+  // Compile a pattern-bearing विकल्प to an if/else-if chain. The discriminant is
+  // evaluated once into a block-scoped temp; the अन्यथा (default) branch, wher-
+  // ever it appears in source, becomes the trailing else. Branches stay self-
+  // contained (first match wins), matching the value switch's no-fall-through.
+  function genMatchChain(node, indent) {
+    const inner = indent + '  ';
+    const bodyIndent = inner + '  ';
+    const disc = `__match${matchCounter++}`;
+    emit('{\n');
+    emit(`${inner}const ${disc} = `); genExpr(node.discriminant); emit(';\n');
+    let started = false, def = null;
+    for (const c of node.cases) {
+      if (!c.tests) { def = c; continue; }          // hold the default for last
+      emit(inner + (started ? 'else if (' : 'if ('));
+      started = true;
+      c.tests.forEach((t, i) => { if (i) emit(' || '); emitMatchTest(t, disc); });
+      emit(') {\n');
+      emitMatchBinds(c.tests, disc, bodyIndent);
+      c.body.forEach(s => { emit(bodyIndent); genStatement(s, bodyIndent); emit('\n'); });
+      emit(inner + '}\n');
+    }
+    if (def) {
+      emit(inner + (started ? 'else {\n' : '{\n'));
+      def.body.forEach(s => { emit(bodyIndent); genStatement(s, bodyIndent); emit('\n'); });
+      emit(inner + '}\n');
+    }
     emit(indent + '}');
   }
 
@@ -732,10 +834,12 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
       case 'Construct': {
         // Assemble from role slots; order in source is irrelevant.
         const s = node.slots;
-        // बहुवचन कर्तृ → constructGroup: the tag distributes over the समास
-        // children (one element per child), sharing the other kāraka slots.
-        // Returns an array of nodes. Same slot syntax, different builder.
-        emit(node.plural ? '__DB.constructGroup({ tag: ' : '__DB.construct({ tag: ');
+        // बहुवचन / द्विवचन कर्तृ → constructGroup: the tag distributes over the
+        // समास children (one element per child), sharing the other kāraka slots.
+        // Returns an array of nodes. A द्विवचन (dual) is the same group builder —
+        // the grammar asserts a pair (checked in semantic analysis); a बहुवचन is
+        // any number. Same slot syntax, different builder.
+        emit((node.plural || node.dual) ? '__DB.constructGroup({ tag: ' : '__DB.construct({ tag: ');
         genExpr(s.tag);
         if (s.content) {
           if (!inView && readsState(s.content)) {
