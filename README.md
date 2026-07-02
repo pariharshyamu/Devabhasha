@@ -914,6 +914,13 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
   turns the untyped edge into a typed, Result-carrying value. Pairs with `उद्धृ`
   (`नियत देहः = उद्धृ परीक्ष्य(schema, कच्चम्)।`). See the *typed HTTP boundary*
   under सेवक below.
+- **कोष्ठागार** (document store): `कोष्ठागार(पथ, परीक्षकः?)` opens a JSON-file
+  collection; the handle's async methods each return a `परिणाम` — `योजय`
+  (insert, assigns an `अङ्कः`/id), `आनय` (all), `एकम्` (by id), `अन्वेषय`
+  (filter by predicate), `परिवर्तय` (patch), `निष्कासय` (delete), `गणना`
+  (count). The optional `परीक्षकः` is a `record → परिणाम` validator (an आकृति
+  wraps into one) run before every insert. Built on `सञ्चिका`'s JSON I/O — no
+  new host dep, so a bundle stays self-contained. See *Persistence* below.
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep
@@ -1177,6 +1184,44 @@ payloads through `उद्धृ परीक्ष्य`, printing the 200/40
 where the type layer, the Result model, and the server meet: **types describe
 the shape, `आकृति` enforces it where types can't reach, and `परिणाम` carries the
 verdict** — no exceptions, no untyped body leaking past the door.
+
+### कोष्ठागार — persistence (a document store, written in Devabhāṣā)
+
+The last piece a backend needs is somewhere to keep data. `कोष्ठागार`
+(koṣṭhāgāra, "storehouse") is a small document store — a collection is a JSON
+file of records, opened with `कोष्ठागार(पथ)`; every method is `असमकालिक` and
+returns a `परिणाम`, so a failed read or write is a value, never a throw. Each
+insert gets a fresh `अङ्कः` (id). Crucially it is built **on `सञ्चिका`'s JSON
+I/O, in Devabhāṣā** — no database driver, no new host dependency, so a bundled
+program stays self-contained under Node (the "runs anywhere" property holds).
+
+```
+आयात { कोष्ठागार } आ "std/कोष्ठागार"।
+आयात { वस्तु, अक्षर, सङ्ख्या, परीक्ष्य } आ "std/आकृति"।
+
+नियत ग्रन्थआकृतिः = वस्तु(कोष{ शीर्षकम्: अक्षर, वर्षम्: सङ्ख्या })।
+# an optional validator (record → परिणाम) runs before every insert; an आकृति
+# schema wraps straight into one, so the store only ever holds valid records
+नियत कोषः = कोष्ठागार("ग्रन्थाः.json", कार्य(र){ फलम् परीक्ष्य(ग्रन्थआकृतिः, र)। })।
+
+असमकालिक कार्य चालय () {   # प्रतीक्षा and उद्धृ live inside a कार्य
+    नियत लेखः = उद्धृ प्रतीक्षा कोषः.योजय(कोष{ शीर्षकम्: "गीता", वर्षम्: ४०० })।  # → record + अङ्कः
+    नियत सर्वे = उद्धृ प्रतीक्षा कोषः.आनय()।                                      # → गण
+    नियत पुराणाः = उद्धृ प्रतीक्षा कोषः.अन्वेषय(कार्य(ग्र){ फलम् ग्र.वर्षम् < ३५०। })।
+    फलम् साधितम्(सर्वे.दीर्घता)।
+}
+```
+
+Methods: `योजय` (insert), `आनय` (all), `एकम्(अङ्कः)` (by id), `अन्वेषय(pred)`
+(query), `परिवर्तय(अङ्कः, patch)` (update), `निष्कासय(अङ्कः)` (delete),
+`गणना` (count). `examples/ग्रन्थालयः.deva` is a runnable catalog that ties the
+whole backend arc together — **`कोष्ठागार` persists, `आकृति` validates at
+insert, `उद्धृ` propagates, `परिणाम` carries every verdict** — a schema-checked,
+file-backed service in one Sanskrit source with no external dependencies.
+
+*(For a SQL backend, a `node:sqlite`-backed variant is the natural v2 — it would
+trade the dependency-free/browser-portable property for real queries, a
+deliberate choice left open.)*
 
 **On "optimum":** each route's path is **compiled once at registration** into a
 segment list (static segments + `:param` markers), and routes are **grouped by
