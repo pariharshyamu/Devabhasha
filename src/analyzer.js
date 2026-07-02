@@ -15,7 +15,7 @@ import { STYLE_PROPS, STYLE_VALUES } from './style.js';
 import { TAG_STEMS, EVENT_STEMS } from './karaka-web.js';
 import { describe as describeKaraka } from './vibhakti.js';
 import { semanticDiagnostics } from './semantics.js';
-import { typeDiagnostics } from './types.js';
+import { typeDiagnostics, declaredTypeAt } from './types.js';
 
 // ---- diagnostics ----
 // Returns an array of { line, col, endCol, message, severity } for a source.
@@ -135,6 +135,30 @@ export function hover(word) {
     };
   }
   return null;
+}
+
+// Position-aware hover: the vocabulary/kāraka meaning of the word under the
+// cursor, ENRICHED with its declared type when the cursor sits on a typed
+// binding or a reference to one. Falls back to plain hover(word) when there is
+// no source/position context. This is what the language server calls.
+export function hoverAt(source, line, col) {
+  const lines = String(source).split('\n');
+  const lineText = lines[line - 1] || '';
+  const { word } = wordAt(lineText, col - 1);        // wordAt is 0-based
+  const base = word ? hover(word) : null;
+
+  // Resolve the binding under the cursor (works on a use or the declaration)
+  // and look up its declared type, if any.
+  let typed = null;
+  try {
+    const def = definition(source, line, col);
+    if (def) typed = declaredTypeAt(source, def.line, def.col);
+  } catch { /* analysis is best-effort */ }
+
+  if (!base && !typed) return null;
+  if (base && typed) return { ...base, type: typed.display };
+  if (typed) return { label: word, detail: typed.display, doc: 'प्रकारः (declared type)', kind: 'type', type: typed.display };
+  return base;
 }
 
 // Full grammatical parse of an inflected noun (case, number, kāraka), or null.

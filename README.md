@@ -716,6 +716,15 @@ Array compatibility is structural on the element type, and a misplaced parameter
 on a non-container type (`सङ्ख्या<अक्षर>`) is flagged. Like the rest of the
 annotation, `<…>` is erased — the emitted JS is identical.
 
+### Type-aware hover
+
+Hovering an annotated binding — or any reference to one — reports its declared
+type in the editor: `आधारः` shows *सङ्ख्या (number)*, a `गण<अक्षर>` variable
+shows *array of string*, and a typed function shows a signature
+*(सङ्ख्या, सङ्ख्या) → सङ्ख्या*. It resolves the binding through the symbol table,
+so a usage far from the declaration still reports the right type; unannotated
+bindings simply add nothing to the word's ordinary hover.
+
 ## आयात / निर्यात — the module system
 
 Modules use **compile-time resolution and linking** (the Rust/Python
@@ -1226,8 +1235,9 @@ checker).
 Open directions from here:
 
 1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`) with flow into
-   `प्रत्येकम्` loop variables and array-destructuring are **now in place**. Still
-   open: object shapes and function types, and type-aware hover.
+   `प्रत्येकम्` loop variables and array-destructuring, and **type-aware hover**,
+   are **now in place**. Still open: full object shapes and first-class function
+   types in the checker (hover already shows a function's signature).
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending

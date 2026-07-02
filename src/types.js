@@ -322,3 +322,46 @@ export function typeDiagnostics(source) {
   catch { return []; }
   return diags;
 }
+
+// ---- type-aware hover ----
+// The DECLARED type at a binding position (line, col) — the annotation on the
+// VarDecl / parameter / function it introduces — or null when that binding is
+// unannotated (types are optional, so most bindings have none). This drives
+// type-aware hover: no inference is done, so only explicitly-typed bindings
+// report a type. Returns { display } where display is a human string, plus
+// `tag` (the type) for a value or `fn: true` for a function.
+export function declaredTypeAt(source, line, col) {
+  let ast;
+  try { ast = parse(tokenize(source)); } catch { return null; }
+  const at = pos => pos && pos.line === line && pos.col === col;
+  const fnSig = node => {
+    const ps = (node.paramTypes || node.params.map(() => null))
+      .map(a => a ? typeName(annType(a)) : '?');
+    const rt = node.returnType ? typeName(annType(node.returnType)) : '?';
+    return `(${ps.join(', ')}) → ${rt}`;
+  };
+  let found = null;
+  const visit = node => {
+    if (found || !node || typeof node !== 'object') return;
+    if (node.type === 'VarDecl') {
+      if (at(node.namePos)) {
+        if (node.varType) { found = { display: show(annType(node.varType)), tag: annType(node.varType) }; return; }
+        if (node.init && node.init.type === 'FuncExpr') { found = { display: `${fnSig(node.init)} (function)`, fn: true }; return; }
+      }
+    } else if (node.type === 'FuncDecl') {
+      if (at(node.namePos)) { found = { display: `${fnSig(node)} (function)`, fn: true }; return; }
+      (node.paramPos || []).forEach((p, i) => {
+        if (!found && at(p) && node.paramTypes && node.paramTypes[i])
+          found = { display: show(annType(node.paramTypes[i])), tag: annType(node.paramTypes[i]) };
+      });
+    }
+    for (const k of Object.keys(node)) {
+      if (found) return;
+      const v = node[k];
+      if (Array.isArray(v)) v.forEach(visit);
+      else if (v && typeof v === 'object') visit(v);
+    }
+  };
+  (Array.isArray(ast) ? ast : [ast]).forEach(visit);
+  return found;
+}
