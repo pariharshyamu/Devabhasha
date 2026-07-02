@@ -29,7 +29,21 @@
 दर्शयकम्(४२)।
 दर्शयकम्("अक्षराणि")।
 
+# composite types — गण<सङ्ख्या> is "array of number". The element type flows:
+# iterating the array in प्रत्येकम् binds each item as सङ्ख्या, so योग type-checks.
+नियत अङ्काः: गण<सङ्ख्या> = [१, २, ३, ४]।
+चर सर्वम्: सङ्ख्या = ०।
+प्रत्येकम् (क : अङ्काः) {
+    सर्वम् = योग(सर्वम्, क)।          # क is known to be सङ्ख्या here
+}
+दर्शय("सङ्कलनम्:", सर्वम्)।            # 10
+
+# array-destructuring carries the element type too: प्रथम is सङ्ख्या.
+नियत [प्रथम, द्वितीय] = अङ्काः।
+दर्शय("प्रथम + द्वितीय =", योग(प्रथम, द्वितीय))।   # 3
+
 # The following would be flagged by the analyzer (left commented so the file
 # still runs clean):
-#   योग("पञ्च", १)।        # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
-#   चर क: सङ्ख्या = "x"।   # प्रकारभेदः: declared सङ्ख्या but assigned अक्षर
+#   योग("पञ्च", १)।              # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
+#   चर क: सङ्ख्या = "x"।         # प्रकारभेदः: declared सङ्ख्या but assigned अक्षर
+#   नियत ल: गण<अक्षर> = अङ्काः।   # प्रकारभेदः: declared गण<अक्षर> but assigned गण<सङ्ख्या>

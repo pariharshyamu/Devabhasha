@@ -13,6 +13,12 @@
 // The base types (drawn from Sanskrit grammatical/quantitative vocabulary):
 //   सङ्ख्या number · अक्षर string · तथ्य boolean · वस्तु object · गण array ·
 //   रिक्त void (a कार्य that returns nothing) · किमपि any (the gradual escape).
+//
+// COMPOSITE. गण also takes an element type — गण<सङ्ख्या> is an array of numbers.
+// Internally a type is either a base string ('सङ्ख्या') or a structured node
+// { base:'गण', elem:<type> }. A bare गण behaves as गण<किमपि>. The element type
+// flows: iterating a गण<सङ्ख्या> in प्रत्येकम्, or array-destructuring it, binds
+// each element as सङ्ख्या.
 
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
@@ -22,24 +28,48 @@ const VOID = 'रिक्त';
 export const BASE_TYPES = new Set([
   'सङ्ख्या', 'अक्षर', 'तथ्य', 'वस्तु', 'गण', VOID, ANY,
 ]);
+// Base types that accept a <...> element parameter.
+const PARAMETRIC = new Set(['गण']);
 
 // English gloss for messages.
 const EN = {
   'सङ्ख्या': 'number', 'अक्षर': 'string', 'तथ्य': 'boolean', 'वस्तु': 'object',
   'गण': 'array', 'रिक्त': 'void', 'किमपि': 'any',
 };
-const show = t => `${t} (${EN[t] || '?'})`;
+// A type is an array iff it is bare गण or a { base:'गण' } node.
+const isArr = t => t === 'गण' || !!(t && t.base === 'गण');
+// The element type of an array; a bare गण is unconstrained (किमपि).
+const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
+// Structural identity — used to decide an array literal's element type.
+const sameType = (a, b) =>
+  (a && a.base === 'गण' && b && b.base === 'गण') ? sameType(a.elem, b.elem) : a === b;
+
+// Human-readable rendering: गण<सङ्ख्या>, and its gloss "array of number".
+const typeName = t => (t && t.base === 'गण') ? `गण<${typeName(t.elem)}>` : t;
+const typeGloss = t => (t && t.base === 'गण') ? `array of ${typeGloss(t.elem)}` : (EN[t] || '?');
+const show = t => `${typeName(t)} (${typeGloss(t)})`;
 
 const WARNING = 2;
 
-// Resolve an annotation node ({name} | null) to a type tag. A null annotation
-// (unannotated) is किमपि. An unknown name is किमपि too (the caller warns).
-const annType = ann => (ann && BASE_TYPES.has(ann.name)) ? ann.name : ANY;
+// Resolve an annotation node ({name, params?} | null) to a type tag. A null
+// annotation (unannotated) is किमपि; an unknown name is किमपि too (the caller
+// warns). A parametric गण<T> becomes a structured { base:'गण', elem }.
+function annType(ann) {
+  if (!ann || !BASE_TYPES.has(ann.name)) return ANY;
+  if (ann.name === 'गण' && ann.params && ann.params.length)
+    return { base: 'गण', elem: annType(ann.params[0]) };
+  return ann.name;
+}
 
-// Assignability: किमपि is a wildcard both ways; otherwise names must match.
-const compatible = (expected, actual) =>
-  expected == null || actual == null || expected === ANY || actual === ANY ||
-  expected === actual;
+// Assignability: किमपि is a wildcard both ways; two arrays are compatible when
+// their element types are (bare गण's element is किमपि, so it fits anything);
+// otherwise base names must match.
+function compatible(expected, actual) {
+  if (expected == null || actual == null) return true;
+  if (expected === ANY || actual === ANY) return true;
+  if (isArr(expected) && isArr(actual)) return compatible(elemOf(expected), elemOf(actual));
+  return expected === actual;
+}
 
 export function typeDiagnostics(source) {
   let ast;
@@ -51,10 +81,15 @@ export function typeDiagnostics(source) {
     if (!pos || pos.line == null) return;
     diags.push({ line: pos.line, col: pos.col, endCol: pos.col + 1, message, kind, severity: WARNING });
   };
-  // warn once per unknown type-name annotation
+  // Validate an annotation node: flag unknown names and misplaced type
+  // parameters (e.g. सङ्ख्या<...>), recursing through composite params.
   const checkTypeName = ann => {
-    if (ann && !BASE_TYPES.has(ann.name))
+    if (!ann) return;
+    if (!BASE_TYPES.has(ann.name))
       warn(ann, `अज्ञातप्रकारः (unknown type '${ann.name}')`, 'unknown-type');
+    else if (ann.params && ann.params.length && !PARAMETRIC.has(ann.name))
+      warn(ann, `प्रकारदोषः ('${ann.name}' takes no type parameter)`, 'type-arity');
+    (ann.params || []).forEach(checkTypeName);
   };
 
   const makeScope = parent => ({ parent, vars: new Map() });
@@ -88,7 +123,17 @@ export function typeDiagnostics(source) {
       case 'String': case 'Template': return 'अक्षर';
       case 'Boolean': return 'तथ्य';
       case 'ObjectLiteral': return 'वस्तु';
-      case 'Array': return 'गण';
+      case 'Array': {
+        // Infer the element type: गण<T> when the elements agree on a concrete
+        // type, गण<किमपि> otherwise (empty, mixed, or containing anything).
+        const els = node.elements || [];
+        if (!els.length) return { base: 'गण', elem: ANY };
+        let elem = infer(els[0], scope);
+        for (let k = 1; k < els.length; k++) {
+          if (!sameType(elem, infer(els[k], scope))) { elem = ANY; break; }
+        }
+        return { base: 'गण', elem };
+      }
       case 'Null': return ANY;
       case 'Identifier': return getVar(scope, node.name);
       case 'Call': {
@@ -142,7 +187,15 @@ export function typeDiagnostics(source) {
     switch (node.type) {
       case 'VarDecl': {
         if (node.init) walkExpr(node.init, scope);
-        if (node.pattern) return;                    // destructured — not tracked in v1
+        if (node.pattern) {
+          // Array-destructuring a गण<सङ्ख्या> binds each name as सङ्ख्या.
+          // Object shapes aren't modelled yet, so object patterns stay किमपि.
+          if (node.pattern.kind === 'array' && node.init) {
+            const elem = elemOf(infer(node.init, scope));
+            for (const n of node.pattern.names) setVar(scope, n.name, elem);
+          }
+          return;
+        }
         if (node.varType) {
           checkTypeName(node.varType);
           const declared = annType(node.varType);
@@ -188,7 +241,10 @@ export function typeDiagnostics(source) {
         return;
       case 'ForOf':
         walkExpr(node.iterable, scope);
-        { const ls = makeScope(scope); setVar(ls, node.item, ANY); walkBody(node.body, ls, ret); }
+        { const ls = makeScope(scope);
+          // Iterating a गण<सङ्ख्या> binds the item as सङ्ख्या; otherwise किमपि.
+          setVar(ls, node.item, elemOf(infer(node.iterable, scope)));
+          walkBody(node.body, ls, ret); }
         return;
       case 'Switch':
         walkExpr(node.discriminant, scope);

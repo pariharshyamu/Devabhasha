@@ -57,6 +57,40 @@ ok('array literal is गण', !has('चर a: गण = [१,२]।', 'type-init
 ok('unknown type name flagged', has('चर न: संख्या = ५।', 'unknown-type'));
 ok('known types not flagged', !has('चर न: सङ्ख्या = ५।', 'unknown-type'));
 
+// ---------- composite (element-typed) arrays ----------
+ok('composite type is erased',
+   js('नियत xs: गण<सङ्ख्या> = [१,२,३]।') === js('नियत xs = [१,२,३]।'));
+ok('composite param is erased',
+   js('कार्य f(अ: गण<अक्षर>): रिक्त { दर्शय(अ)।}') === js('कार्य f(अ){ दर्शय(अ)।}'));
+ok('num-array literal into गण<सङ्ख्या> is clean',
+   clean('नियत xs: गण<सङ्ख्या> = [१,२,३]।'));
+ok('string-array assigned to गण<सङ्ख्या> mismatches',
+   has('नियत ys: गण<अक्षर> = ["a","b"]। नियत xs: गण<सङ्ख्या> = ys।', 'type-init'));
+ok('bare गण is compatible with गण<सङ्ख्या> (gradual element)',
+   clean('चर g: गण = [१,२]। नियत xs: गण<सङ्ख्या> = g।'));
+ok('mixed array literal stays गण<किमपि> (no false positive)',
+   clean('नियत xs: गण<सङ्ख्या> = [१,"x"]।'));
+ok('unknown composite element flagged',
+   has('नियत xs: गण<बकवास> = []।', 'unknown-type'));
+ok('non-parametric type with a parameter flagged',
+   has('चर न: सङ्ख्या<अक्षर> = ५।', 'type-arity'));
+ok('गण takes a parameter without arity warning',
+   !has('नियत xs: गण<सङ्ख्या> = [१]।', 'type-arity'));
+
+// ---------- element type flows into प्रत्येकम् loops ----------
+ok('loop item of गण<सङ्ख्या> is सङ्ख्या (clean into सङ्ख्या param)',
+   clean('कार्य g(n: सङ्ख्या){फलम् n।} नियत xs: गण<सङ्ख्या> = [१,२]। प्रत्येकम् (x : xs) { दर्शय(g(x))।}'));
+ok('loop item of गण<सङ्ख्या> mismatches an अक्षर param',
+   has('कार्य g(s: अक्षर){फलम् s।} नियत xs: गण<सङ्ख्या> = [१,२]। प्रत्येकम् (x : xs) { दर्शय(g(x))।}', 'type-arg'));
+ok('loop over bare गण is gradual (no warning)',
+   clean('कार्य g(s: अक्षर){फलम् s।} चर xs: गण = [१,२]। प्रत्येकम् (x : xs) { दर्शय(g(x))।}'));
+
+// ---------- element type flows into array destructuring ----------
+ok('destructured name from गण<सङ्ख्या> is सङ्ख्या (clean)',
+   clean('कार्य g(n: सङ्ख्या){फलम् n।} नियत xs: गण<सङ्ख्या> = [१,२]। नियत [a,b] = xs। दर्शय(g(a))।'));
+ok('destructured name from गण<सङ्ख्या> mismatches an अक्षर param',
+   has('कार्य g(s: अक्षर){फलम् s।} नियत xs: गण<सङ्ख्या> = [१,२]। नियत [a,b] = xs। दर्शय(g(a))।', 'type-arg'));
+
 // ---------- integration ----------
 ok('diagnostics() surfaces type warnings',
    diagnostics('चर न: सङ्ख्या = "x"।').some(d => d.kind === 'type-init' && d.severity === 2));

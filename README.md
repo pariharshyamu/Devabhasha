@@ -633,6 +633,25 @@ comparisons, and the return type of typed calls — so `चर न: सङ्ख
 `न` be checked as a number wherever it flows. Being absent from the bootstrap
 sources, the type layer leaves the self-hosting fixpoint untouched.
 
+### Composite arrays — `गण<सङ्ख्या>`
+
+`गण` takes an **element type**: `गण<सङ्ख्या>` is an array of numbers. A bare
+`गण` is `गण<किमपि>`, so it stays gradual and fits any element type. Array
+literals infer their element type when the elements agree (`[१,२,३]` is
+`गण<सङ्ख्या>`; a mixed or empty literal stays `गण<किमपि>`), and the element type
+**flows** wherever the array is taken apart:
+
+```
+नियत अङ्काः: गण<सङ्ख्या> = [१, २, ३]।
+प्रत्येकम् (क : अङ्काः) { दर्शय(योग(क, १))। }   # क is known सङ्ख्या
+नियत [प्रथम, द्वितीय] = अङ्काः।                # both सङ्ख्या
+# नियत ल: गण<अक्षर> = अङ्काः।                  # प्रकारभेदः: गण<अक्षर> ← गण<सङ्ख्या>
+```
+
+Array compatibility is structural on the element type, and a misplaced parameter
+on a non-container type (`सङ्ख्या<अक्षर>`) is flagged. Like the rest of the
+annotation, `<…>` is erased — the emitted JS is identical.
+
 ## आयात / निर्यात — the module system
 
 Modules use **compile-time resolution and linking** (the Rust/Python
@@ -1141,9 +1160,9 @@ unreachable code, arity, duplicate कारक — plus the gradual type checke
 
 Open directions from here:
 
-1. **Deeper types** — composite forms (`गण` of `सङ्ख्या`, object shapes,
-   function types), flow into `प्रत्येकम्` loop variables and destructuring, and
-   type-aware hover.
+1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`) with flow into
+   `प्रत्येकम्` loop variables and array-destructuring are **now in place**. Still
+   open: object shapes and function types, and type-aware hover.
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems, and
    further declensions, extending `vibhakti.js` (`PARADIGM_TABLE` / `VOWEL_STEMS`).
 3. **वचन semantics for द्विवचन** — the dual currently parses but builds a single

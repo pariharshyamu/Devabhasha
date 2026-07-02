@@ -191,7 +191,23 @@ export function parse(tokens) {
         { line: t.line, col: t.col, kind: 'parse' });
     }
     next();
-    return { name: t.value, line: t.line, col: t.col };
+    const node = { name: t.value, line: t.line, col: t.col };
+    // optional composite parameter(s): गण<सङ्ख्या> — an element-typed array.
+    // Stored as `params` (a list, for forward compatibility) and, like the
+    // rest of the annotation, erased by the codegen.
+    if (check('OP', '<')) {
+      next();
+      const params = [parseType()];
+      while (check('OP', ',')) { next(); params.push(parseType()); }
+      if (!check('OP', '>')) {
+        const g = peek();
+        throw new DevabhashaError("प्रकारदोषः: expected '>' to close a composite type",
+          { line: g.line, col: g.col, kind: 'parse' });
+      }
+      next();
+      node.params = params;
+    }
+    return node;
   }
 
   function parseReturn() {
