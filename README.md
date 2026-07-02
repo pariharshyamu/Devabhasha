@@ -868,14 +868,19 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
 - **सूची** (list): `योगः` (sum), `गुणनफलम्` (product), `न्यूनीकरणम्` (fold),
   `अन्वेषय` (find), `सन्ति`/`सर्वे` (any/all), `न्यूनतमम्`/`महत्तमम्`
   (min/max), `अद्वितीयम्` (unique), `आदिमानि`/`शेषाणि` (take/drop),
-  `समतलीकृ` (flatten), `परिसरः` (range).
+  `समतलीकृ` (flatten), `परिसरः` (range), `क्रमय` (sort by comparator — a
+  **stable merge sort written in Devabhāṣā**, no `.sort` primitive),
+  `क्रमयाङ्कैः` (numeric sort), `गणय` (count matching), `युग्मय` (zip),
+  `खण्डशः` (chunk).
 - **कोष** (object): `कुञ्जयः`/`मूल्यानि`/`प्रविष्टयः` (keys/values/entries),
   `अस्ति` (has-key), `सङ्ख्या` (count), `विलयः` (merge),
-  `प्रतिचित्रयमूल्यानि` (map-values), `गालयकुञ्जीभिः` (pick). Built on the
+  `प्रतिचित्रयमूल्यानि` (map-values), `गालयकुञ्जीभिः` (pick),
+  `त्यजकुञ्जीभिः` (omit), `विपर्यासय` (invert keys/values). Built on the
   `सङ्ग्रह` (Object) global.
-- **पाठ** (string): `आवर्तय` (repeat), `वामपूरणम्` (pad-left),
-  `प्रथमाक्षरोच्च` (capitalize), `पदानि` (words), `व्युत्क्रमः` (reverse),
-  `परिवर्तय_सर्वम्` (replace-all), `रिक्तः` (is-blank).
+- **पाठ** (string): `आवर्तय` (repeat), `वामपूरणम्`/`दक्षिणपूरणम्`
+  (pad-left/right), `प्रथमाक्षरोच्च` (capitalize), `पदानि` (words),
+  `पङ्क्तयः` (lines), `व्युत्क्रमः` (reverse), `परिवर्तय_सर्वम्` (replace-all),
+  `आवृत्तिः` (count occurrences), `रिक्तः` (is-blank).
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep

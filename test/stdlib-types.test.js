@@ -63,6 +63,20 @@ ok('सन्ति(list, नसङ्ख्या) is flagged (predicate wants 
 ok('अद्वितीयम्(["a","b"]) stays gradual (bare गण, no false positive)',
    check(`आयात { अद्वितीयम् } आ "std/सूची"। दर्शय(अद्वितीयम्(["अ","आ","अ"]).दीर्घता)।`).length === 0);
 
+// ---------- 2a′. the extended सूची surface is typed too ----------
+ok('क्रमयाङ्कैः([nums]) is clean',
+   check(`आयात { क्रमयाङ्कैः } आ "std/सूची"। दर्शय(क्रमयाङ्कैः([३,१,२]))।`).length === 0);
+ok('क्रमयाङ्कैः("पाठ") is flagged (wants गण<सङ्ख्या>)',
+   hasArgErr(check(`आयात { क्रमयाङ्कैः } आ "std/सूची"। दर्शय(क्रमयाङ्कैः("पाठ"))।`)));
+ok('क्रमय(list, comparator) is clean',
+   check(`आयात { क्रमय } आ "std/सूची"। दर्शय(क्रमय([३,१], कार्य(अ,ब){ फलम् अ-ब। }))।`).length === 0);
+ok('क्रमय(list, नसङ्ख्या) is flagged (comparator wants कार्य)',
+   hasArgErr(check(`आयात { क्रमय } आ "std/सूची"। दर्शय(क्रमय([३,१], ५))।`)));
+ok('गणय(list, predicate): सङ्ख्या feeds a सङ्ख्या param cleanly',
+   check(`आयात { गणय } आ "std/सूची"। कार्य n(x: सङ्ख्या){फलम् x।} दर्शय(n(गणय([१,२], कार्य(x){फलम् x>०।})))।`).length === 0);
+ok('खण्डशः(list, "x") is flagged (आकारः wants सङ्ख्या)',
+   hasArgErr(check(`आयात { खण्डशः } आ "std/सूची"। दर्शय(खण्डशः([१,२], "x"))।`)));
+
 // ---------- 2b. पाठ — every helper concretely typed ----------
 ok('आवर्तय("ab", ३) is clean',
    check(`आयात { आवर्तय } आ "std/पाठ"। दर्शय(आवर्तय("ab", ३))।`).length === 0);
@@ -70,6 +84,10 @@ ok('आवर्तय(५, "x") is flagged on BOTH arguments',
    check(`आयात { आवर्तय } आ "std/पाठ"। दर्शय(आवर्तय(५, "x"))।`).filter(d => d.kind === 'type-arg').length === 2);
 ok('वामपूरणम्("7", ३, "0") is clean',
    check(`आयात { वामपूरणम् } आ "std/पाठ"। दर्शय(वामपूरणम्("7", ३, "0"))।`).length === 0);
+ok('दक्षिणपूरणम्("7", ३, "0") is clean',
+   check(`आयात { दक्षिणपूरणम् } आ "std/पाठ"। दर्शय(दक्षिणपूरणम्("7", ३, "0"))।`).length === 0);
+ok('आवृत्तिः("a.b", ५) is flagged (खण्डः wants अक्षर, got सङ्ख्या)',
+   hasArgErr(check(`आयात { आवृत्तिः } आ "std/पाठ"। दर्शय(आवृत्तिः("a.b", ५))।`)));
 
 // ---------- 2c. कोष — वस्तु in, concrete out ----------
 ok('अस्ति(कोष{…}, "क") is clean',
