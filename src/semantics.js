@@ -139,8 +139,19 @@ export function semanticDiagnostics(source) {
       case 'Switch':
         walkExpr(node.discriminant, scope);
         for (const c of node.cases) {
-          (c.tests || []).forEach(t => walkExpr(t, scope));
-          walkBody(c.body, makeScope(scope));   // each branch is its own scope
+          const cscope = makeScope(scope);        // each branch is its own scope
+          for (const t of (c.tests || [])) {
+            // a pattern binds names into the branch and constrains with value
+            // expressions; a plain value test is just an expression.
+            if (t.type === 'MatchObject') {
+              for (const p of t.props) { p.value && walkExpr(p.value, scope); p.bind && declare(cscope, p.bind); }
+            } else if (t.type === 'MatchArray') {
+              for (const e of t.elements) { e.value && walkExpr(e.value, scope); e.bind && declare(cscope, e.bind); }
+            } else {
+              walkExpr(t, scope);
+            }
+          }
+          walkBody(c.body, cscope);
         }
         return;
       case 'Block':

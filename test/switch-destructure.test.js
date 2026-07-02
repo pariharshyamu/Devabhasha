@@ -32,6 +32,46 @@ ok('missing case/default errors', (() => {
   try { js('विकल्प(x){ दर्शय(१)।}'); return false; } catch { return true; }
 })());
 
+// ---------- विकल्प pattern matching (object / array shapes) ----------
+// A value-only विकल्प stays a JS switch; introducing any pattern switches the
+// whole विकल्प to a shape-testing if/else-if chain that binds names.
+ok('value-only विकल्प stays a JS switch',
+   js('विकल्प(x){ स्थिति १: दर्शय(१)। अन्यथा: दर्शय(०)।}').includes('switch ('));
+ok('pattern विकल्प compiles to if-chain (no JS switch)',
+   !js('विकल्प(x){ स्थिति कोष{प्रकार:"a"}: दर्शय(१)।}').includes('switch ('));
+ok('object pattern emits a shape test',
+   js('विकल्प(x){ स्थिति कोष{प्रकार:"a"}: दर्शय(१)।}').includes('typeof') );
+ok('object pattern reads by raw Sanskrit key',
+   js('विकल्प(x){ स्थिति कोष{प्रकार:"a"}: दर्शय(१)।}').includes('["प्रकार"] === "a"'));
+
+const dispatch = arg => `कार्य वर्गी(न){ विकल्प(न){
+    स्थिति कोष{ प्रकार:"यदि", देहः }: फलम् देहः।
+    स्थिति कोष{ प्रकार:"पाश" }: फलम् "P"।
+    स्थिति [अ,ब]: फलम् अ+ब।
+    अन्यथा: फलम् "?"।
+}} दर्शय(वर्गी(${arg}))।`;
+ok('object pattern constraint + binding',
+   run(dispatch('कोष{ प्रकार:"यदि", देहः:"D" }'))[0] === 'D');
+ok('object pattern constraint only',
+   run(dispatch('कोष{ प्रकार:"पाश" }'))[0] === 'P');
+ok('array pattern binds positionally',
+   run(dispatch('[४,५]'))[0] === '9');
+ok('object with wrong tag → default',
+   run(dispatch('कोष{ प्रकार:"अन्य" }'))[0] === '?');
+ok('non-object discriminant → default (guarded typeof)',
+   run(dispatch('"तार"'))[0] === '?');
+ok('array of wrong length → not matched',
+   run('कार्य f(न){ विकल्प(न){ स्थिति [अ,ब]: फलम् "pair"। अन्यथा: फलम् "no"।}} दर्शय(f([१,२,३]))।')[0] === 'no');
+ok('array element literal constraint',
+   run('कार्य f(न){ विकल्प(न){ स्थिति [०, ख]: फलम् ख। अन्यथा: फलम् "no"।}} दर्शय(f([०, ९]))।')[0] === '9');
+ok('discriminant evaluated once (side-effect-free temp)',
+   js('विकल्प(गण()){ स्थिति कोष{क:१}: दर्शय(१)।}').match(/__match\d+ = ga/) != null);
+ok('nested pattern विकल्प uses distinct temps',
+   (() => { const j = js('विकल्प(a){ स्थिति कोष{क:१}: विकल्प(b){ स्थिति कोष{ख:२}: दर्शय(१)।}।}');
+            return j.includes('__match0') && j.includes('__match1'); })());
+ok('pattern binding is usable in the branch body (no undefined warning)',
+   run('कार्य f(न){ विकल्प(न){ स्थिति कोष{ मूल्यम् }: फलम् मूल्यम् * २। अन्यथा: फलम् ०।}} दर्शय(f(कोष{ मूल्यम्:२१ }))।')[0] === '42');
+
 // ---------- destructuring ----------
 ok('array pattern → const [a,b]', js('नियत [अ,ब]=स।').includes('const [a, ba] ='));
 ok('array destructure binds positionally',

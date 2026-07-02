@@ -16,6 +16,25 @@
 दर्शय(वारनाम(७))।    # सप्ताहान्तः
 दर्शय(वारनाम(४))।    # अन्यः दिनः
 
+# विन्यास — pattern matching. A स्थिति may be a structural PATTERN instead of a
+# value: an object shape कोष { … } or an array [ … ]. A field written key:value
+# is a CONSTRAINT (must ===); a bare key is a BINDING (bound in that branch).
+# Only the singular value cases stay a JS switch; any pattern turns the whole
+# विकल्प into a shape-testing match.
+कार्य वर्णय (नोड) {
+    विकल्प (नोड) {
+        स्थिति कोष { प्रकार: "यदि", देहः }:  फलम् पाठ"यदि-वाक्यम् (देहः={देहः})"।
+        स्थिति कोष { प्रकार: "पाश" }:          फलम् "पाश-वाक्यम्"।
+        स्थिति [शीर्ष, पुच्छ]:                  फलम् पाठ"युग्मम् ({शीर्ष}, {पुच्छ})"।
+        अन्यथा:                                 फलम् "अज्ञातम्"।
+    }
+}
+
+दर्शय(वर्णय(कोष { प्रकार: "यदि", देहः: "x>0" }))।   # यदि-वाक्यम् (देहः=x>0)
+दर्शय(वर्णय(कोष { प्रकार: "पाश" }))।                 # पाश-वाक्यम्
+दर्शय(वर्णय([१, २]))।                                # युग्मम् (1, 2)
+दर्शय(वर्णय("तार"))।                                 # अज्ञातम् (not an object/array)
+
 # destructuring — pull fields straight out of arrays and objects
 नियत [प्रथमम्, द्वितीयम्] = [१०, २०]।
 दर्शय(प्रथमम् + द्वितीयम्)।                    # 30

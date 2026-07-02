@@ -263,8 +263,8 @@ export function parse(tokens) {
       let tests = null;
       if (check('CASE')) {
         next(); // CASE
-        tests = [parseExpression()];
-        while (check('OP', ',')) { next(); tests.push(parseExpression()); }
+        tests = [parseCaseTest()];
+        while (check('OP', ',')) { next(); tests.push(parseCaseTest()); }
       } else if (check('ELSE')) {
         next(); // ELSE → default
       } else {
@@ -283,6 +283,58 @@ export function parse(tokens) {
     }
     expect('OP', '}');
     return { type: 'Switch', discriminant, cases };
+  }
+
+  // A स्थिति test is either a plain value expression (matched with ===, the
+  // original behaviour) or a structural PATTERN — an object shape कोष { … } or
+  // an array [ … ]. Patterns match by shape and bind names; they are recognised
+  // by their leading token, so ordinary value cases are entirely unaffected.
+  function parseCaseTest() {
+    if (check('OBJECT')) return parseMatchObject();
+    if (check('OP', '[')) return parseMatchArray();
+    return parseExpression();
+  }
+
+  // कोष { प्रकार: "If", देहः }  — an object pattern. Each field is either a
+  // CONSTRAINT (`key: value` → the discriminant's key must === value, usually a
+  // literal) or a BINDING (bare `key` → bind key = discriminant[key] in the
+  // branch). Matches when the discriminant is a non-null object satisfying every
+  // constraint and carrying every bound key.
+  function parseMatchObject() {
+    const kt = next(); // OBJECT
+    expect('OP', '{');
+    const props = [];
+    while (!check('OP', '}') && !check('EOF')) {
+      const t = peek();
+      if (!(t.type === 'STRING' || t.type === 'IDENT' || KEYWORD_TOKENS.has(t.type)))
+        throw new DevabhashaError('विन्यासदोषः: pattern key must be a name or string',
+          { line: t.line, col: t.col, kind: 'parse' });
+      next();
+      const key = t.value;
+      let value = null, bind = null;
+      if (check('OP', ':')) { next(); value = parseExpression(); }  // constraint
+      else bind = key;                                              // shorthand binding
+      props.push({ key, value, bind, line: t.line, col: t.col });
+      if (check('OP', ',')) next();
+    }
+    expect('OP', '}');
+    return { type: 'MatchObject', props, line: kt.line, col: kt.col };
+  }
+
+  // [ अ, ब, ० ]  — an array pattern: exact-length positional match. Each element
+  // is a BINDING (an identifier → bind element) or a CONSTRAINT (a literal → the
+  // element must ===). Matches an array of exactly this length.
+  function parseMatchArray() {
+    const lb = expect('OP', '[');
+    const elements = [];
+    while (!check('OP', ']') && !check('EOF')) {
+      const t = peek();
+      if (t.type === 'IDENT') { next(); elements.push({ bind: t.value, value: null, line: t.line, col: t.col }); }
+      else elements.push({ bind: null, value: parseExpression(), line: t.line, col: t.col });
+      if (check('OP', ',')) next();
+    }
+    expect('OP', ']');
+    return { type: 'MatchArray', elements, line: lb.line, col: lb.col };
   }
 
   // प्रत्येकम् (वस्तु : समूह) { ... }  → for (const वस्तु of समूह)

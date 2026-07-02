@@ -599,6 +599,34 @@ compiles to a JavaScript `switch` where every branch is a block scope with an
 implicit `break` (so `चर`/`नियत` in one case can't leak into another, and
 execution never falls through).
 
+### Pattern matching — object & array shapes
+
+A `स्थिति` may test a **structural pattern** instead of a value: an object
+shape `कोष { … }` or an array `[ … ]`. Inside a pattern, a field written
+`key: value` is a **constraint** (the discriminant's field must `===` it,
+usually a literal); a **bare** `key` (or a positional array identifier) is a
+**binding**, bound in that branch:
+
+```
+विकल्प (नोड) {
+    स्थिति कोष { प्रकार: "यदि", देहः }:  फलम् देहः।       # प्रकार==="यदि"; देहः bound
+    स्थिति कोष { प्रकार: "पाश" }:          फलम् "पाश"।      # constraint only
+    स्थिति [शीर्ष, पुच्छ]:                  फलम् शीर्ष + पुच्छ।  # array of exactly 2
+    अन्यथा:                                 फलम् "अज्ञातम्"।
+}
+```
+
+The moment any `स्थिति` uses a pattern, the whole `विकल्प` lowers to an
+`if / else if` chain instead of a `switch`: the discriminant is evaluated once
+into a block-scoped temp, object patterns test `typeof`/key presence/constraints
+and read bindings by their **raw Sanskrit key**, array patterns test
+`Array.isArray` and exact length. The `अन्यथा` default becomes the trailing
+`else`, and first match wins (still no fall-through). **Value-only `विकल्प`
+keeps compiling to the exact same JS `switch`**, so nothing about existing
+switches — or the bootstrap fixpoint — changes. Pattern bindings are real
+scoped names: the semantic pass sees them, and go-to-definition / rename resolve
+them like any other binding.
+
 ## विभाजन — destructuring
 
 `चर` / `नियत` can bind straight out of an array or object:
@@ -1195,8 +1223,10 @@ Open directions from here:
 3. **वचन semantics for द्विवचन** — **now in place**: a dual कर्तृ builds a pair
    (a group of exactly two, count-checked with a वचनभेदः diagnostic), matching
    the बहुवचन group semantic.
-4. **Pattern matching** — extend `विकल्प` beyond value equality to destructuring
-   patterns (`स्थिति कोष { प्रकार: "If" }: …`).
+4. **Pattern matching** — **now in place**: `विकल्प` accepts structural object
+   and array patterns (`स्थिति कोष { प्रकार: "If", देहः }: …`) with constraints
+   and bindings, lowering to an if-chain (see *Pattern matching* above). Still
+   open: nested patterns, key-aliased bindings, and array rest (`…`).
 
 ## License
 

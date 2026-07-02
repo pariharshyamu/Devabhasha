@@ -141,8 +141,19 @@ export function buildSymbols(source) {
       case 'Switch':
         walkExpr(node.discriminant, scope);
         (node.cases || []).forEach(c => {
-          (c.tests || []).forEach(t => walkExpr(t, scope));
-          walkBlock(c.body, makeScope(scope));
+          const cscope = makeScope(scope);
+          for (const t of (c.tests || [])) {
+            // a pattern binds names (at their own positions) and constrains
+            // with value expressions; a plain value test is just an expression.
+            if (t.type === 'MatchObject') {
+              for (const p of t.props) { p.value && walkExpr(p.value, scope); p.bind && addBinding(p.bind, { line: p.line, col: p.col }, cscope); }
+            } else if (t.type === 'MatchArray') {
+              for (const e of t.elements) { e.value && walkExpr(e.value, scope); e.bind && addBinding(e.bind, { line: e.line, col: e.col }, cscope); }
+            } else {
+              walkExpr(t, scope);
+            }
+          }
+          walkBlock(c.body, cscope);
         });
         return;
       case 'Export':

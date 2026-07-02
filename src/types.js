@@ -249,8 +249,19 @@ export function typeDiagnostics(source) {
       case 'Switch':
         walkExpr(node.discriminant, scope);
         (node.cases || []).forEach(c => {
-          (c.tests || []).forEach(t => walkExpr(t, scope));
-          walkBody(c.body, makeScope(scope), ret);
+          const cscope = makeScope(scope);
+          for (const t of (c.tests || [])) {
+            // pattern tests bind names (typed किमपि — the shape isn't tracked
+            // yet) and constrain with value expressions; value tests are exprs.
+            if (t.type === 'MatchObject') {
+              for (const p of t.props) { p.value && walkExpr(p.value, scope); p.bind && setVar(cscope, p.bind, ANY); }
+            } else if (t.type === 'MatchArray') {
+              for (const e of t.elements) { e.value && walkExpr(e.value, scope); e.bind && setVar(cscope, e.bind, ANY); }
+            } else {
+              walkExpr(t, scope);
+            }
+          }
+          walkBody(c.body, cscope, ret);
         });
         return;
       case 'Block': walkBody(node.body, makeScope(scope), ret); return;

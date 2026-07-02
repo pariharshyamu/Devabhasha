@@ -353,6 +353,9 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
   const namespaceAliases = new Set();
   // async-context depth: प्रतीक्षा (await) is only valid when > 0
   let asyncDepth = 0;
+  // unique temp counter for pattern-matching विकल्प (each holds the evaluated
+  // discriminant in its own block-scoped const, so nested matches don't clash)
+  let matchCounter = 0;
   // inside a रूप style-value expression: bare color/style words → CSS literals
   let inStyleValue = false;
 
@@ -465,6 +468,13 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         genBlock(node.body, indent);
         break;
       case 'Switch': {
+        // A विकल्प whose स्थिति tests are all plain VALUES compiles to a JS
+        // switch (below). A विकल्प that uses any structural PATTERN (an object
+        // shape or array) instead compiles to an if/else-if chain that shape-
+        // tests the discriminant and binds names — see genMatchChain. Keeping
+        // value-only switches on the switch path leaves their output (and the
+        // bootstrap fixpoint) byte-for-byte unchanged.
+        if (switchHasPattern(node)) { genMatchChain(node, indent); break; }
         // Each branch is self-contained: a block scope + implicit break, so
         // there is no C-style fall-through. Comma-separated tests stack as
         // consecutive `case` labels sharing one body.
@@ -512,6 +522,83 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
     const inner = indent + '  ';
     emit('{\n');
     block.body.forEach(s => { emit(inner); genStatement(s, inner); emit('\n'); });
+    emit(indent + '}');
+  }
+
+  // ---- pattern-matching विकल्प ----
+  const isMatchPattern = t => t && (t.type === 'MatchObject' || t.type === 'MatchArray');
+  const switchHasPattern = node =>
+    node.cases.some(c => (c.tests || []).some(isMatchPattern));
+
+  // Emit the boolean test for one स्थिति test against the discriminant temp.
+  // A value test is a === comparison; a pattern is a shape test.
+  function emitMatchTest(t, disc) {
+    if (t.type === 'MatchObject') {
+      emit(`(${disc} != null && typeof ${disc} === "object"`);
+      for (const p of t.props) {
+        if (p.value != null) { emit(` && ${disc}[${JSON.stringify(p.key)}] === `); genExpr(p.value); }
+        else emit(` && ${JSON.stringify(p.key)} in ${disc}`);   // a binding requires the key
+      }
+      emit(')');
+    } else if (t.type === 'MatchArray') {
+      emit(`(Array.isArray(${disc}) && ${disc}.length === ${t.elements.length}`);
+      t.elements.forEach((e, i) => {
+        if (e.value != null) { emit(` && ${disc}[${i}] === `); genExpr(e.value); }
+      });
+      emit(')');
+    } else {
+      emit(`${disc} === `); genExpr(t);
+    }
+  }
+
+  // Emit `const <name> = <access>;` for every binding introduced by the case's
+  // patterns (deduped — a name bound by more than one alternative is declared
+  // once). Object bindings read by key, array bindings by index.
+  function emitMatchBinds(tests, disc, bodyIndent) {
+    const seen = new Set();
+    for (const t of tests) {
+      if (t.type === 'MatchObject') {
+        for (const p of t.props) if (p.bind && !seen.has(p.bind)) {
+          seen.add(p.bind);
+          emit(`${bodyIndent}const ${id(p.bind)} = ${disc}[${JSON.stringify(p.key)}];\n`);
+        }
+      } else if (t.type === 'MatchArray') {
+        t.elements.forEach((e, i) => {
+          if (e.bind && !seen.has(e.bind)) {
+            seen.add(e.bind);
+            emit(`${bodyIndent}const ${id(e.bind)} = ${disc}[${i}];\n`);
+          }
+        });
+      }
+    }
+  }
+
+  // Compile a pattern-bearing विकल्प to an if/else-if chain. The discriminant is
+  // evaluated once into a block-scoped temp; the अन्यथा (default) branch, wher-
+  // ever it appears in source, becomes the trailing else. Branches stay self-
+  // contained (first match wins), matching the value switch's no-fall-through.
+  function genMatchChain(node, indent) {
+    const inner = indent + '  ';
+    const bodyIndent = inner + '  ';
+    const disc = `__match${matchCounter++}`;
+    emit('{\n');
+    emit(`${inner}const ${disc} = `); genExpr(node.discriminant); emit(';\n');
+    let started = false, def = null;
+    for (const c of node.cases) {
+      if (!c.tests) { def = c; continue; }          // hold the default for last
+      emit(inner + (started ? 'else if (' : 'if ('));
+      started = true;
+      c.tests.forEach((t, i) => { if (i) emit(' || '); emitMatchTest(t, disc); });
+      emit(') {\n');
+      emitMatchBinds(c.tests, disc, bodyIndent);
+      c.body.forEach(s => { emit(bodyIndent); genStatement(s, bodyIndent); emit('\n'); });
+      emit(inner + '}\n');
+    }
+    if (def) {
+      emit(inner + (started ? 'else {\n' : '{\n'));
+      def.body.forEach(s => { emit(bodyIndent); genStatement(s, bodyIndent); emit('\n'); });
+      emit(inner + '}\n');
+    }
     emit(indent + '}');
   }
 
