@@ -15,6 +15,7 @@ import { STYLE_PROPS, STYLE_VALUES } from './style.js';
 import { TAG_STEMS, EVENT_STEMS } from './karaka-web.js';
 import { describe as describeKaraka } from './vibhakti.js';
 import { semanticDiagnostics } from './semantics.js';
+import { typeDiagnostics } from './types.js';
 
 // ---- diagnostics ----
 // Returns an array of { line, col, endCol, message, severity } for a source.
@@ -41,7 +42,7 @@ export function diagnostics(source) {
     // unknown error — still surface it
     return [{ line: 1, col: 1, endCol: 2, message: String(e.message || e), kind: 'internal', severity: 1 }];
   }
-  return semanticDiagnostics(source);
+  return [...semanticDiagnostics(source), ...typeDiagnostics(source)];
 }
 
 // ---- the vocabulary index (for completion + hover) ----
@@ -145,6 +146,7 @@ export function grammar(word) {
 
 export { VOCAB };
 export { semanticDiagnostics } from './semantics.js';
+export { typeDiagnostics } from './types.js';
 
 // ---- go-to-definition & rename (scope-aware, via the symbol table) ----
 import { definitionAt, occurrencesAt } from './symbols.js';

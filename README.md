@@ -595,6 +595,44 @@ real bindings; each विकल्प branch is its own scope) and, like the su
 are absent from the bootstrap sources, so the self-hosting fixpoint is
 unaffected.
 
+## प्रकार — gradual, erasable types
+
+Optional type annotations on parameters, return values, and variables. They are
+**erased by the codegen** — the emitted JS is byte-identical with or without
+them — so they never change runtime behaviour; they only drive analyzer
+warnings. The base types draw from Sanskrit quantitative/grammatical vocabulary:
+
+| प्रकार | type | | प्रकार | type |
+|--------|------|---|--------|------|
+| `सङ्ख्या` | number | | `गण` | array |
+| `अक्षर` | string | | `रिक्त` | void (returns nothing) |
+| `तथ्य` | boolean | | `किमपि` | any (the gradual escape) |
+| `वस्तु` | object | | | |
+
+```
+कार्य योग (अ: सङ्ख्या, ब: सङ्ख्या): सङ्ख्या {
+    फलम् अ + ब।
+}
+नियत आधारः: सङ्ख्या = योग(१०, ५)।     # ok
+```
+
+The checker is **gradual**: `किमपि` is compatible with everything, and an
+un-annotated binding *is* `किमपि`, so a mismatch is reported **only when both
+sides have a concrete, known type**. Unannotated code is never warned about, and
+annotations can be added one at a time. It reports:
+
+- **argument mismatch** — `योग("पञ्च", १)` → *argument 1 expects सङ्ख्या, got अक्षर*;
+- **return mismatch** — a `फलम्` whose value's type disagrees with the declared
+  return (and `रिक्त` returning a value, or a non-`रिक्त` function with a bare
+  `फलम्`);
+- **variable mismatch** — `चर क: सङ्ख्या = "x"`;
+- **unknown type** — a misspelt annotation like `: संख्या`.
+
+Types are inferred through literals, string concatenation (`+`), arithmetic,
+comparisons, and the return type of typed calls — so `चर न: सङ्ख्या = ५` lets
+`न` be checked as a number wherever it flows. Being absent from the bootstrap
+sources, the type layer leaves the self-hosting fixpoint untouched.
+
 ## आयात / निर्यात — the module system
 
 Modules use **compile-time resolution and linking** (the Rust/Python
@@ -1095,14 +1133,23 @@ source .deva
 
 ## Suggested roadmap from here
 
-1. **Source maps** — you have line/col on every token already; thread them into
-   codegen for real debugging.
-2. **A JSX-like element syntax** using compounds, e.g.
-   `अङ्गम् दिव् { … }` block form instead of nested calls.
-3. **Type-ish annotations** drawn from Sanskrit grammatical categories.
-4. **Editor support** — a TextMate grammar / VS Code extension highlighting the
-   keyword set in `keywords.js`.
-5. **Sanskrit error messages** — partly done; expand `parser.js` diagnostics.
+Much of the original roadmap is now in place: **source maps** (`--sourcemap`),
+a **समास element syntax** (block-form `रचय` trees), **type annotations**
+(`प्रकार`, above), **editor support** (TextMate grammar + VS Code extension +
+LSP), and **Sanskrit diagnostics** (a full semantic pass — undefined names,
+unreachable code, arity, duplicate कारक — plus the gradual type checker).
+
+Open directions from here:
+
+1. **Deeper types** — composite forms (`गण` of `सङ्ख्या`, object shapes,
+   function types), flow into `प्रत्येकम्` loop variables and destructuring, and
+   type-aware hover.
+2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems, and
+   further declensions, extending `vibhakti.js` (`PARADIGM_TABLE` / `VOWEL_STEMS`).
+3. **वचन semantics for द्विवचन** — the dual currently parses but builds a single
+   element; a "pair" construction could give it meaning to match बहुवचन groups.
+4. **Pattern matching** — extend `विकल्प` beyond value equality to destructuring
+   patterns (`स्थिति कोष { प्रकार: "If" }: …`).
 
 ## License
 

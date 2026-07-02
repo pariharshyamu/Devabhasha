@@ -113,9 +113,10 @@ export function parse(tokens) {
       return { type: 'VarDecl', kind, name: null, pattern, init };
     }
     const nt = expect('IDENT');
+    const varType = check('OP', ':') ? (next(), parseType()) : null;   // चर x: सङ्ख्या = …
     let init = null;
     if (check('OP', '=')) { next(); init = parseExpression(); }
-    return { type: 'VarDecl', kind, name: nt.value, init, namePos: { line: nt.line, col: nt.col } };
+    return { type: 'VarDecl', kind, name: nt.value, varType, init, namePos: { line: nt.line, col: nt.col } };
   }
 
   // [अ, ब, ग]  — array destructuring pattern (positional, no holes/rest).
@@ -155,8 +156,10 @@ export function parse(tokens) {
     next(); // FUNC
     const nt = expect('IDENT');
     const params = parseParams();
+    const returnType = check('OP', ':') ? (next(), parseType()) : null;   // optional : प्रकार
     const body = parseBlock();
-    return { type: 'FuncDecl', name: nt.value, params, body, async: isAsync,
+    return { type: 'FuncDecl', name: nt.value, params, paramTypes: params.__types,
+             returnType, body, async: isAsync,
              namePos: { line: nt.line, col: nt.col }, paramPos: params.__pos };
   }
 
@@ -164,15 +167,31 @@ export function parse(tokens) {
     expect('OP', '(');
     const params = [];
     const pos = [];
+    const types = [];
     while (!check('OP', ')')) {
       const pt = expect('IDENT');
       params.push(pt.value);
       pos.push({ line: pt.line, col: pt.col });
+      types.push(check('OP', ':') ? (next(), parseType()) : null);  // optional प्रकार
       if (check('OP', ',')) next();
     }
     expect('OP', ')');
     Object.defineProperty(params, '__pos', { value: pos, enumerable: false });
+    Object.defineProperty(params, '__types', { value: types, enumerable: false });
     return params;
+  }
+
+  // A प्रकार (type) annotation: a single type-name identifier. Erasable — it is
+  // attached to the AST but never emitted, so the JS output is identical with
+  // or without it (that is what keeps the type layer gradual and optional).
+  function parseType() {
+    const t = peek();
+    if (t.type !== 'IDENT') {
+      throw new DevabhashaError('प्रकारदोषः: expected a type name (e.g. सङ्ख्या, अक्षर)',
+        { line: t.line, col: t.col, kind: 'parse' });
+    }
+    next();
+    return { name: t.value, line: t.line, col: t.col };
   }
 
   function parseReturn() {
@@ -456,8 +475,9 @@ export function parse(tokens) {
     if (check('FUNC')) {
       next();
       const params = parseParams();
+      const returnType = check('OP', ':') ? (next(), parseType()) : null;
       const body = parseBlock();
-      return { type: 'FuncExpr', params, body, async: false };
+      return { type: 'FuncExpr', params, paramTypes: params.__types, returnType, body, async: false };
     }
     // async function expression: असमकालिक कार्य (params) { ... }
     if (check('ASYNC')) {
@@ -468,8 +488,9 @@ export function parse(tokens) {
       }
       next(); // FUNC
       const params = parseParams();
+      const returnType = check('OP', ':') ? (next(), parseType()) : null;
       const body = parseBlock();
-      return { type: 'FuncExpr', params, body, async: true };
+      return { type: 'FuncExpr', params, paramTypes: params.__types, returnType, body, async: true };
     }
 
     // web-layer builtins as expressions

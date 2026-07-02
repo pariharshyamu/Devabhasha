@@ -1,0 +1,35 @@
+# प्रकार.deva — the gradual, erasable type layer.
+#   node src/cli.js run examples/प्रकार.deva      # runs (types are erased)
+#
+# Annotations are OPTIONAL. They are checked by the analyzer but ERASED by the
+# codegen, so the program runs identically with or without them. Base types:
+#   सङ्ख्या number · अक्षर string · तथ्य boolean · वस्तु object · गण array ·
+#   रिक्त void · किमपि any (the gradual escape — compatible with everything).
+
+# a fully-typed function
+कार्य योग (अ: सङ्ख्या, ब: सङ्ख्या): सङ्ख्या {
+    फलम् अ + ब।
+}
+
+# typed variable; its type flows into later checks
+नियत आधारः: सङ्ख्या = योग(१०, ५)।
+दर्शय("योगः:", आधारः)।              # 15
+
+# अक्षर (string) work
+कार्य अभिवादनम् (नाम: अक्षर): अक्षर {
+    फलम् "नमस्ते, " + नाम।
+}
+दर्शय(अभिवादनम्("मित्र"))।           # नमस्ते, मित्र
+
+# gradual: an un-annotated parameter is किमपि, so this stays flexible —
+# no type is enforced on वस्तु here.
+कार्य दर्शयकम् (वस्तु) {
+    दर्शय("मूल्यम्:", वस्तु)।
+}
+दर्शयकम्(४२)।
+दर्शयकम्("अक्षराणि")।
+
+# The following would be flagged by the analyzer (left commented so the file
+# still runs clean):
+#   योग("पञ्च", १)।        # प्रकारभेदः: argument 1 expects सङ्ख्या, got अक्षर
+#   चर क: सङ्ख्या = "x"।   # प्रकारभेदः: declared सङ्ख्या but assigned अक्षर
