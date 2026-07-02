@@ -800,10 +800,18 @@ out"). Anything not marked is private to its module:
 source preposition, in three forms:
 
 ```
-आयात { द्वि, पाई } आ "गणितागारम्"।    # named — bind specific exports
-आयात * रूपेण ग आ "गणितागारम्"।         # namespace — ग.द्वि, ग.पाई
-आयात "उपस्करः"।                        # side-effect — just run the module
+आयात { द्वि, पाई } आ "गणितागारम्"।       # named — bind specific exports
+आयात { द्वि रूपेण दुगुना } आ "गणितागारम्"।  # aliased — bind द्वि locally as दुगुना
+आयात * रूपेण ग आ "गणितागारम्"।            # namespace — ग.द्वि, ग.पाई
+आयात "उपस्करः"।                           # side-effect — just run the module
 ```
+
+A named import may be **aliased** with `रूपेण` ("as"), the same word the
+namespace form uses: the left name is what the module exports, the right is the
+local binding. Aliases are honoured everywhere — the runtime binds the value
+under the new name, the type checker flows the export's type onto it (so a wrong
+call through the alias is flagged, naming the local name), and import-existence
+is still verified against the *exported* name.
 
 `devabhasha build entry.deva` (or `run`) resolves every `आयात` relative to
 the importing file (appending `.deva`) — except a `std/…` source, which

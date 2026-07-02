@@ -119,9 +119,12 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
       if (imp.kind === 'namespace') {
         prelude += `const ${id(imp.alias)} = ${depSlot};\n`;
       } else if (imp.kind === 'named') {
-        for (const n of imp.names) {
-          prelude += `const ${id(n)} = ${depSlot}[${JSON.stringify(id(n))}];\n`;
-        }
+        // bind the LOCAL name to the module's EXPORTED name (they differ when
+        // an import is aliased with रूपेण; imported[] falls back to names[]).
+        const imported = imp.imported || imp.names;
+        imp.names.forEach((local, k) => {
+          prelude += `const ${id(local)} = ${depSlot}[${JSON.stringify(id(imported[k]))}];\n`;
+        });
       } // 'effect' imports need no bindings; the dep already ran
     }
 
@@ -161,22 +164,26 @@ export function checkProgram(entryPath) {
     for (const imp of mod.imports) {
       const depTypes = exportTypes.get(imp.resolved) || {};
       if (imp.kind === 'named') {
+        // existence + typing are checked on the EXPORTED name; the local alias
+        // (imp.names[i]) is what the importer sees, imported[i] what the module
+        // must provide (they coincide when unaliased).
+        const imported = imp.imported || imp.names;
         // Import EXISTENCE: a named import of a symbol the target module does
         // not निर्यात silently binds `undefined` at runtime — flag it here,
         // pointed at the offending name (or the आयात keyword as a fallback).
         const dep = modules.get(imp.resolved);
         const exported = new Set(dep ? dep.exports : []);
-        imp.names.forEach((n, i) => {
-          if (!exported.has(n)) {
+        imported.forEach((remote, i) => {
+          if (!exported.has(remote)) {
             const pos = (imp.namePos && imp.namePos[i]) || { line: imp.line, col: imp.col };
             all.push({
               file: path, line: pos.line, col: pos.col, endCol: pos.col + 1,
-              message: `आयातदोषः ('${n}' is not exported by "${imp.source}")`,
+              message: `आयातदोषः ('${remote}' is not exported by "${imp.source}")`,
               kind: 'import-missing', severity: 1,
             });
           }
         });
-        for (const n of imp.names) importSigs.set(n, n in depTypes ? depTypes[n] : 'किमपि');
+        imp.names.forEach((local, i) => importSigs.set(local, imported[i] in depTypes ? depTypes[imported[i]] : 'किमपि'));
       } else if (imp.kind === 'namespace') {
         importSigs.set(imp.alias, { base: 'वस्तु', fields: { ...depTypes } });
       }

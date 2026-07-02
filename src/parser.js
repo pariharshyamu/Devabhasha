@@ -794,20 +794,28 @@ export function parse(tokens) {
       const source = expect('STRING').value;
       return { type: 'Import', kind: 'namespace', alias, names: null, source, line: kw.line, col: kw.col };
     }
-    // named:  { a, b, c } आ "..."
+    // named:  { a, b रूपेण c } आ "..."  — each name may be aliased with रूपेण
+    // ("as"): the LEFT name is what the module exports, the RIGHT is the local
+    // binding. `names` holds the local names (what this file sees), `imported`
+    // the export names (what to look up on the module); they coincide when
+    // unaliased, so every existing consumer of `names` is unaffected.
     if (check('OP', '{')) {
       next();
-      const names = [];
-      const namePos = [];   // parallel to names, so a missing import points precisely
+      const names = [];      // local binding names
+      const imported = [];   // parallel: the exported name in the source module
+      const namePos = [];    // parallel: anchors a missing-import diagnostic
       while (!check('OP', '}') && !check('EOF')) {
         const t = expect('IDENT');
-        names.push(t.value); namePos.push({ line: t.line, col: t.col });
+        let local = t.value;
+        const asTok = peek();   // optional  रूपेण <alias>
+        if (asTok.type === 'IDENT' && asTok.value === 'रूपेण') { next(); local = expect('IDENT').value; }
+        imported.push(t.value); names.push(local); namePos.push({ line: t.line, col: t.col });
         if (check('OP', ',')) next();
       }
       expect('OP', '}');
       expect('FROM');
       const source = expect('STRING').value;
-      return { type: 'Import', kind: 'named', names, namePos, alias: null, source, line: kw.line, col: kw.col };
+      return { type: 'Import', kind: 'named', names, imported, namePos, alias: null, source, line: kw.line, col: kw.col };
     }
     // side-effect:  आयात "..."
     if (check('STRING')) {
