@@ -513,6 +513,13 @@ export function parse(tokens) {
       next();
       return { type: 'Await', argument: parseUnary() };
     }
+    // उद्धृ <expr> — unwrap a परिणाम: yield its मूल्यम् on सफल, else return the
+    // विफलम् from the enclosing कार्य (Rust's `?`). Erased-free control flow,
+    // desugared by the codegen into a guard before the containing statement.
+    if (check('UDDHR')) {
+      const t = next();
+      return { type: 'Uddhr', argument: parseUnary(), line: t.line, col: t.col };
+    }
     return parsePostfix();
   }
 
@@ -765,7 +772,29 @@ export function parse(tokens) {
   //   निर्यात नियत पाई = ३.१४।
   //   निर्यात रूपनाम कार्डः = रूप { … }।
   function parseExport() {
-    next(); // EXPORT
+    const kw = next(); // EXPORT
+    // re-export:  निर्यात { a, b रूपेण c } आ "म"  — a barrel that forwards names
+    // from another module without a local declaration. Each entry may be
+    // aliased with रूपेण: the LEFT name is the source module's export, the RIGHT
+    // is the name THIS module exports.
+    if (check('OP', '{')) {
+      next();
+      const names = [];      // names this module exports
+      const sources = [];    // parallel: the name to look up in the source module
+      const namePos = [];
+      while (!check('OP', '}') && !check('EOF')) {
+        const t = expect('IDENT');
+        let out = t.value;
+        const asTok = peek();
+        if (asTok.type === 'IDENT' && asTok.value === 'रूपेण') { next(); out = expect('IDENT').value; }
+        sources.push(t.value); names.push(out); namePos.push({ line: t.line, col: t.col });
+        if (check('OP', ',')) next();
+      }
+      expect('OP', '}');
+      expect('FROM');
+      const source = expect('STRING').value;
+      return { type: 'Export', reexport: true, names, sources, namePos, source, line: kw.line, col: kw.col };
+    }
     const decl = parseStatement();
     const exportable = new Set(['VarDecl', 'FuncDecl', 'StyleDecl', 'StateDecl']);
     if (!exportable.has(decl.type)) {
@@ -794,20 +823,28 @@ export function parse(tokens) {
       const source = expect('STRING').value;
       return { type: 'Import', kind: 'namespace', alias, names: null, source, line: kw.line, col: kw.col };
     }
-    // named:  { a, b, c } आ "..."
+    // named:  { a, b रूपेण c } आ "..."  — each name may be aliased with रूपेण
+    // ("as"): the LEFT name is what the module exports, the RIGHT is the local
+    // binding. `names` holds the local names (what this file sees), `imported`
+    // the export names (what to look up on the module); they coincide when
+    // unaliased, so every existing consumer of `names` is unaffected.
     if (check('OP', '{')) {
       next();
-      const names = [];
-      const namePos = [];   // parallel to names, so a missing import points precisely
+      const names = [];      // local binding names
+      const imported = [];   // parallel: the exported name in the source module
+      const namePos = [];    // parallel: anchors a missing-import diagnostic
       while (!check('OP', '}') && !check('EOF')) {
         const t = expect('IDENT');
-        names.push(t.value); namePos.push({ line: t.line, col: t.col });
+        let local = t.value;
+        const asTok = peek();   // optional  रूपेण <alias>
+        if (asTok.type === 'IDENT' && asTok.value === 'रूपेण') { next(); local = expect('IDENT').value; }
+        imported.push(t.value); names.push(local); namePos.push({ line: t.line, col: t.col });
         if (check('OP', ',')) next();
       }
       expect('OP', '}');
       expect('FROM');
       const source = expect('STRING').value;
-      return { type: 'Import', kind: 'named', names, namePos, alias: null, source, line: kw.line, col: kw.col };
+      return { type: 'Import', kind: 'named', names, imported, namePos, alias: null, source, line: kw.line, col: kw.col };
     }
     // side-effect:  आयात "..."
     if (check('STRING')) {

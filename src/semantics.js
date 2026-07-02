@@ -71,6 +71,7 @@ export function semanticDiagnostics(source) {
     for (const s of statements) {
       if (!s || typeof s !== 'object') continue;
       const decl = s.type === 'Export' ? s.decl : s;
+      if (!decl) continue;   // a re-export (निर्यात { … } आ "म") has no local decl
       switch (decl.type) {
         case 'VarDecl':
           if (decl.pattern) patternNames(decl.pattern).forEach(n => declare(scope, n));

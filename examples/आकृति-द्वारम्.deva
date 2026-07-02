@@ -1,0 +1,52 @@
+# आकृति-द्वारम्.deva — a typed boundary (ākṛti-dvāram, "the schema gateway").
+#   node src/cli.js run examples/आकृति-द्वारम्.deva
+#
+# On a backend, untrusted input (a request body, a parsed JSON file, an env
+# var) arrives as किमपि — the one place the erased प्रकार types can't guard. An
+# आकृति is a RUNTIME schema mirroring a type shape; परीक्ष्य validates against it
+# and returns a परिणाम. Paired with उद्धृ, a handler reads the input, validates
+# it, and either works with a TYPED value or short-circuits with the exact error.
+
+आयात { वस्तु, अक्षर, सङ्ख्या, विकल्पीय, गण, परीक्ष्य } आ "std/आकृति"।
+
+# the shape a "ग्रन्थः" (book) payload must have
+नियत ग्रन्थआकृतिः = वस्तु(कोष{
+    शीर्षकम्: अक्षर,
+    वर्षम्: सङ्ख्या,
+    लेखकः: विकल्पीय(अक्षर),      # optional
+    विषयाः: गण(अक्षर)            # array of strings
+})।
+
+# a "handler": validate the raw payload, then work with the typed value.
+# उद्धृ unwraps साधितम् or returns the विफलम् — so the साधितम् line below runs
+# only when the whole payload conformed.
+कार्य पञ्जीकृ (कच्चम्) {
+    नियत ग्रन्थः = उद्धृ परीक्ष्य(ग्रन्थआकृतिः, कच्चम्)।
+    फलम् साधितम्("पञ्जीकृतम्: " + ग्रन्थः.शीर्षकम् + " (" + ग्रन्थः.वर्षम् + ")")।
+}
+
+# report a handler's outcome the way an HTTP layer would (200 vs 400)
+कार्य उत्तरम् (फल) {
+    यदि (फल.सफल) { दर्शय("२०० ✓", फल.मूल्यम्)। }
+    अन्यथा       { दर्शय("४०० ✗", फल.दोषः)। }
+}
+
+# a well-formed payload → accepted
+उत्तरम्(पञ्जीकृ(कोष{
+    शीर्षकम्: "मेघदूतम्", वर्षम्: ४००, लेखकः: "कालिदासः", विषयाः: ["काव्यम्", "प्रेम"]
+}))।
+
+# लेखकः omitted (it's विकल्पीय) → still accepted
+उत्तरम्(पञ्जीकृ(कोष{
+    शीर्षकम्: "पञ्चतन्त्रम्", वर्षम्: ३००, विषयाः: ["नीतिः"]
+}))।
+
+# वर्षम् is a string, not a number → rejected, with the field path
+उत्तरम्(पञ्जीकृ(कोष{
+    शीर्षकम्: "अज्ञातम्", वर्षम्: "पुरा", विषयाः: []
+}))।
+
+# a non-string slips into विषयाः → rejected, with the index
+उत्तरम्(पञ्जीकृ(कोष{
+    शीर्षकम्: "दोषयुक्तम्", वर्षम्: १, विषयाः: ["ठीक", ४२]
+}))।

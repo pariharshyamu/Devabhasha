@@ -796,14 +796,38 @@ out"). Anything not marked is private to its module:
 कार्य गुप्तम् () { … }          # private — not importable
 ```
 
+A module can also **re-export** names from another, without a local
+declaration — a "barrel" that presents a curated surface gathered from several
+modules. Each entry may be aliased with `रूपेण` (left = the source's export,
+right = what this module exports):
+
+```
+# उपकरणम्.deva — one entry point over the standard library
+निर्यात { योगः, क्रमय } आ "std/सूची"।
+निर्यात { आवर्तय रूपेण पुनरावृत्ति } आ "std/पाठ"।
+```
+
+Re-exports are honoured everywhere: the runtime resolves each name to the
+original module's value, the exported type flows **through** the barrel (and
+through a chain of barrels) onto the consumer, and re-exporting a name the
+source does not export is flagged in the barrel itself.
+
 **Importing** — `आयात` (āyāta, "incoming") with `आ` (ā, "from") as the
 source preposition, in three forms:
 
 ```
-आयात { द्वि, पाई } आ "गणितागारम्"।    # named — bind specific exports
-आयात * रूपेण ग आ "गणितागारम्"।         # namespace — ग.द्वि, ग.पाई
-आयात "उपस्करः"।                        # side-effect — just run the module
+आयात { द्वि, पाई } आ "गणितागारम्"।       # named — bind specific exports
+आयात { द्वि रूपेण दुगुना } आ "गणितागारम्"।  # aliased — bind द्वि locally as दुगुना
+आयात * रूपेण ग आ "गणितागारम्"।            # namespace — ग.द्वि, ग.पाई
+आयात "उपस्करः"।                           # side-effect — just run the module
 ```
+
+A named import may be **aliased** with `रूपेण` ("as"), the same word the
+namespace form uses: the left name is what the module exports, the right is the
+local binding. Aliases are honoured everywhere — the runtime binds the value
+under the new name, the type checker flows the export's type onto it (so a wrong
+call through the alias is flagged, naming the local name), and import-existence
+is still verified against the *exported* name.
 
 `devabhasha build entry.deva` (or `run`) resolves every `आयात` relative to
 the importing file (appending `.deva`) — except a `std/…` source, which
@@ -881,6 +905,15 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
   (pad-left/right), `प्रथमाक्षरोच्च` (capitalize), `पदानि` (words),
   `पङ्क्तयः` (lines), `व्युत्क्रमः` (reverse), `परिवर्तय_सर्वम्` (replace-all),
   `आवृत्तिः` (count occurrences), `रिक्तः` (is-blank).
+- **आकृति** (runtime schemas): `वस्तु`/`गण`/`विकल्पीय` build a schema from the
+  leaves `अक्षर`/`सङ्ख्या`/`तथ्य`/`किमपि`, and `परीक्ष्य(schema, value)`
+  validates any किमपि against it → a `परिणाम` (the value, or a path-qualified
+  `विफलम्` like `अङ्काः[1]: अपेक्षितम् सङ्ख्या, …`). This is the **typed
+  boundary**: the erased `प्रकार` types can't guard untrusted input (a request
+  body, parsed JSON, an env var), so `आकृति` mirrors the shape at runtime and
+  turns the untyped edge into a typed, Result-carrying value. Pairs with `उद्धृ`
+  (`नियत देहः = उद्धृ परीक्ष्य(schema, कच्चम्)।`). See the *typed HTTP boundary*
+  under सेवक below.
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep
@@ -1115,6 +1148,36 @@ into `अनुरोधः.प्राचलाः`. Middleware follows the Ko
 `प्रतीक्षा अग्रे()` to pass control downstream — which is what lets the server
 await the whole chain before ending the response.
 
+### The typed HTTP boundary — मार्गकः + आकृति + उद्धृ
+
+A request body is `किमपि` — the erased `प्रकार` types stop at the boundary. Give
+the boundary an `आकृति` (runtime schema) and the untyped edge becomes a typed,
+Result-carrying value. With `उद्धृ`, a handler validates and dispatches in a
+couple of lines — a conforming body flows on as a checked value, a malformed one
+short-circuits to a 400 carrying the exact, path-qualified reason:
+
+```
+आयात { मार्गकः } आ "std/मार्गकः"।
+आयात { वस्तु, अक्षर, सङ्ख्या, विकल्पीय, परीक्ष्य } आ "std/आकृति"।
+
+नियत ग्रन्थआकृतिः = वस्तु(कोष{ शीर्षकम्: अक्षर, वर्षम्: सङ्ख्या, लेखकः: विकल्पीय(अक्षर) })।
+चर ऐप = मार्गकः()।
+
+ऐप.स्थापय("/ग्रन्थाः", असमकालिक कार्य(अ, प्र){
+    चर कच्चम् = (प्रतीक्षा अ.देहम्_जेसन()) अथवा शून्यम्।   # malformed JSON → null
+    चर फल = परीक्ष्य(ग्रन्थआकृतिः, कच्चम्)।                 # → परिणाम
+    यदि (फल.सफल) { प्र.स्थिति(२०१).प्रेषय_जेसन(कोष{ स्थितम्: फल.मूल्यम् })। }
+    अन्यथा       { प्र.स्थिति(४००).प्रेषय_जेसन(कोष{ दोषः: फल.दोषः })। }
+})।
+ऐप.चालय(८०८०)।
+```
+
+`examples/आकृति-द्वारम्.deva` is a runnable version (validating simulated
+payloads through `उद्धृ परीक्ष्य`, printing the 200/400 each would get). This is
+where the type layer, the Result model, and the server meet: **types describe
+the shape, `आकृति` enforces it where types can't reach, and `परिणाम` carries the
+verdict** — no exceptions, no untyped body leaking past the door.
+
 **On "optimum":** each route's path is **compiled once at registration** into a
 segment list (static segments + `:param` markers), and routes are **grouped by
 method**, so a request does only a segment-by-segment compare against the routes
@@ -1211,6 +1274,30 @@ with `await`, which is exactly the I/O case:
 `अथवा` chains right-associatively (`अ अथवा ब अथवा ग` tries each in turn,
 first `Ok` wins) and also guards plain `null`/non-Result values, so it
 doubles as a nullish fallback.
+
+**`उद्धृ` — unwrap-or-propagate.** Where `अथवा` supplies a fallback, `उद्धृ`
+(uddhṛ, "lift out") propagates. `उद्धृ E` evaluates a `परिणाम`: on `सफल` the
+expression *is* its `मूल्यम्`; on `विफलम्` it **returns that `विफलम्` from the
+enclosing `कार्य`**, unchanged. It is Devabhāṣā's answer to Rust's `?` — the
+way to write a sequence of fallible steps top-to-bottom instead of nesting a
+`यदि (र.सफल)` at every one:
+
+```
+कार्य विन्यासम् (पथ) {
+    नियत कच्चम् = उद्धृ सञ्चिका.पठ(पथ)।          # on Err → return that Err now
+    नियत प्रदत्तम् = उद्धृ प्रदत्त.विश्लेषय(कच्चम्)। # ditto — parse error propagates
+    फलम् साधितम्(प्रदत्तम्.नाम)।                   # only runs when both succeeded
+}
+```
+
+It stays true to the no-exceptions design: `उद्धृ` is **erased** — the codegen
+desugars each unwrap into a guard (`evaluate once; if not सफल, return it`)
+emitted *before* the containing statement, so there is no new runtime and no
+thrown control flow. Several `उद्धृ` in one expression short-circuit left to
+right (the first `विफलम्` wins), and the early return targets the **nearest**
+enclosing function, so an `उद्धृ` inside a callback propagates out of the
+callback, not its host. Using `उद्धृ` outside any `कार्य` is a compile error
+(there is nothing to return from).
 
 ## दोषनिरूपणम् — error reporting
 

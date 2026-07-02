@@ -119,9 +119,12 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
       if (imp.kind === 'namespace') {
         prelude += `const ${id(imp.alias)} = ${depSlot};\n`;
       } else if (imp.kind === 'named') {
-        for (const n of imp.names) {
-          prelude += `const ${id(n)} = ${depSlot}[${JSON.stringify(id(n))}];\n`;
-        }
+        // bind the LOCAL name to the module's EXPORTED name (they differ when
+        // an import is aliased with रूपेण; imported[] falls back to names[]).
+        const imported = imp.imported || imp.names;
+        imp.names.forEach((local, k) => {
+          prelude += `const ${id(local)} = ${depSlot}[${JSON.stringify(id(imported[k]))}];\n`;
+        });
       } // 'effect' imports need no bindings; the dep already ran
     }
 
@@ -150,9 +153,24 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
 // the function-call path. Returns a flat list of { file, ...diagnostic }.
 export function checkProgram(entryPath) {
   const { modules, order } = buildGraph(entryPath);
-  // export types are syntactic (from annotations), so they need no ordering
+  // A module's export types are syntactic (from annotations) EXCEPT a
+  // re-export (निर्यात { … } आ "म"), whose type is the source module's export
+  // type. Resolve in dependency-first order (deps precede dependents in
+  // `order`), so a re-export — even a chain of them — sees a fully-resolved
+  // source. An unresolved name falls back to किमपि (gradual).
   const exportTypes = new Map();
-  for (const [path, mod] of modules) exportTypes.set(path, moduleExportTypes(mod.source));
+  for (const path of order) {
+    const mod = modules.get(path);
+    const raw = moduleExportTypes(mod.source);
+    const resolved = {};
+    for (const [name, t] of Object.entries(raw)) {
+      if (t && t.__reexport) {
+        const depTypes = exportTypes.get(resolveSource(t.__reexport.source, path)) || {};
+        resolved[name] = (t.__reexport.name in depTypes) ? depTypes[t.__reexport.name] : 'किमपि';
+      } else resolved[name] = t;
+    }
+    exportTypes.set(path, resolved);
+  }
 
   const all = [];
   for (const path of order) {
@@ -161,22 +179,26 @@ export function checkProgram(entryPath) {
     for (const imp of mod.imports) {
       const depTypes = exportTypes.get(imp.resolved) || {};
       if (imp.kind === 'named') {
+        // existence + typing are checked on the EXPORTED name; the local alias
+        // (imp.names[i]) is what the importer sees, imported[i] what the module
+        // must provide (they coincide when unaliased).
+        const imported = imp.imported || imp.names;
         // Import EXISTENCE: a named import of a symbol the target module does
         // not निर्यात silently binds `undefined` at runtime — flag it here,
         // pointed at the offending name (or the आयात keyword as a fallback).
         const dep = modules.get(imp.resolved);
         const exported = new Set(dep ? dep.exports : []);
-        imp.names.forEach((n, i) => {
-          if (!exported.has(n)) {
+        imported.forEach((remote, i) => {
+          if (!exported.has(remote)) {
             const pos = (imp.namePos && imp.namePos[i]) || { line: imp.line, col: imp.col };
             all.push({
               file: path, line: pos.line, col: pos.col, endCol: pos.col + 1,
-              message: `आयातदोषः ('${n}' is not exported by "${imp.source}")`,
+              message: `आयातदोषः ('${remote}' is not exported by "${imp.source}")`,
               kind: 'import-missing', severity: 1,
             });
           }
         });
-        for (const n of imp.names) importSigs.set(n, n in depTypes ? depTypes[n] : 'किमपि');
+        imp.names.forEach((local, i) => importSigs.set(local, imported[i] in depTypes ? depTypes[imported[i]] : 'किमपि'));
       } else if (imp.kind === 'namespace') {
         importSigs.set(imp.alias, { base: 'वस्तु', fields: { ...depTypes } });
       }

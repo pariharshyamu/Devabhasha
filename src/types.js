@@ -491,6 +491,13 @@ export function moduleExportTypes(source) {
   const out = {};
   for (const s of body) {
     if (!s || s.type !== 'Export') continue;
+    if (s.reexport) {
+      // निर्यात { a, b रूपेण c } आ "म" — the exported type IS the source
+      // module's export type; record a marker for checkProgram to resolve
+      // (it has the whole graph; this function sees only one file).
+      s.names.forEach((name, i) => { out[name] = { __reexport: { source: s.source, name: s.sources[i] } }; });
+      continue;
+    }
     const d = s.decl;
     if (!d) continue;
     if (d.type === 'FuncDecl') out[s.name] = fnTypeOf(d);

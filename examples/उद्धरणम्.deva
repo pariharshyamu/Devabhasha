@@ -1,0 +1,37 @@
+# उद्धरणम्.deva — उद्धृ, Result-propagation (Rust's `?`, with no exceptions).
+#   node src/cli.js run examples/उद्धरणम्.deva
+#
+# `उद्धृ E` unwraps a परिणाम: on सफल it IS the मूल्यम्; on विफलम् it returns that
+# विफलम् from the enclosing कार्य. So a chain of fallible steps reads top-to-
+# bottom, and the first failure short-circuits — no nested यदि (र.सफल) needed.
+
+# a couple of fallible steps, each returning a परिणाम
+कार्य मापय (पाठः) {
+    यदि (पाठः == "") { फलम् विफलम्("रिक्तम् आदानम्")। }
+    फलम् साधितम्(पाठः.दीर्घता)।
+}
+कार्य विपरीतम् (न) {
+    यदि (न == ०) { फलम् विफलम्("शून्येन भागः")। }
+    फलम् साधितम्(१०० / न)।
+}
+
+# compose them with उद्धृ: दीर्घता, then its reciprocal-scaled value. If either
+# step fails, गणय returns that failure unchanged — the फलम् साधितम् never runs.
+कार्य गणय (पाठः) {
+    नियत दीर्घता = उद्धृ मापय(पाठः)।        # Err "रिक्तम्…" propagates on ""
+    नियत मात्रा = उद्धृ विपरीतम्(दीर्घता)।     # Err "शून्येन…" would propagate
+    फलम् साधितम्(मात्रा)।
+}
+
+# success: "नमः" has length 3 → 100/3 ≈ 33.33…
+नियत क = गणय("नमः")।
+यदि (क.सफल) { दर्शय("सफलम्:", क.मूल्यम्)। } अन्यथा { दर्शय("दोषः:", क.दोषः)। }
+
+# failure short-circuits at the first उद्धृ: empty string → "रिक्तम् आदानम्"
+नियत ख = गणय("")।
+यदि (ख.सफल) { दर्शय("सफलम्:", ख.मूल्यम्)। } अन्यथा { दर्शय("दोषः:", ख.दोषः)। }
+
+# उद्धृ pairs with अथवा (unwrap-or-propagate vs. value-or-fallback):
+# here we don't propagate — we supply a default instead.
+नियत ग = गणय("") अथवा साधितम्(०)।
+दर्शय("अथवा उपयोगेन:", ग.मूल्यम्)।   # 0 — the fallback's value

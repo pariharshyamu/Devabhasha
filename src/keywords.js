@@ -44,6 +44,8 @@ export const KEYWORDS = {
   'असमकालिक': 'ASYNC',      // asamakālika — "asynchronous" → async function
   'प्रतीक्षा':  'AWAIT',      // pratīkṣā — "waiting" → await
   'अथवा':      'ORELSE',     // athavā — "or else" → Result value-or-fallback
+  'उद्धृ':      'UDDHR',      // uddhṛ — "lift out/extract" → unwrap a परिणाम or
+                             //   propagate its विफलम् out of the enclosing कार्य
   'सूत्र':      'SUTRA',      // sūtra — "thread" → a reactive reference (lazy, live)
 };
 
