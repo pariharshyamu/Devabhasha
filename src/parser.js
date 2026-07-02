@@ -765,7 +765,29 @@ export function parse(tokens) {
   //   निर्यात नियत पाई = ३.१४।
   //   निर्यात रूपनाम कार्डः = रूप { … }।
   function parseExport() {
-    next(); // EXPORT
+    const kw = next(); // EXPORT
+    // re-export:  निर्यात { a, b रूपेण c } आ "म"  — a barrel that forwards names
+    // from another module without a local declaration. Each entry may be
+    // aliased with रूपेण: the LEFT name is the source module's export, the RIGHT
+    // is the name THIS module exports.
+    if (check('OP', '{')) {
+      next();
+      const names = [];      // names this module exports
+      const sources = [];    // parallel: the name to look up in the source module
+      const namePos = [];
+      while (!check('OP', '}') && !check('EOF')) {
+        const t = expect('IDENT');
+        let out = t.value;
+        const asTok = peek();
+        if (asTok.type === 'IDENT' && asTok.value === 'रूपेण') { next(); out = expect('IDENT').value; }
+        sources.push(t.value); names.push(out); namePos.push({ line: t.line, col: t.col });
+        if (check('OP', ',')) next();
+      }
+      expect('OP', '}');
+      expect('FROM');
+      const source = expect('STRING').value;
+      return { type: 'Export', reexport: true, names, sources, namePos, source, line: kw.line, col: kw.col };
+    }
     const decl = parseStatement();
     const exportable = new Set(['VarDecl', 'FuncDecl', 'StyleDecl', 'StateDecl']);
     if (!exportable.has(decl.type)) {

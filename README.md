@@ -796,6 +796,22 @@ out"). Anything not marked is private to its module:
 कार्य गुप्तम् () { … }          # private — not importable
 ```
 
+A module can also **re-export** names from another, without a local
+declaration — a "barrel" that presents a curated surface gathered from several
+modules. Each entry may be aliased with `रूपेण` (left = the source's export,
+right = what this module exports):
+
+```
+# उपकरणम्.deva — one entry point over the standard library
+निर्यात { योगः, क्रमय } आ "std/सूची"।
+निर्यात { आवर्तय रूपेण पुनरावृत्ति } आ "std/पाठ"।
+```
+
+Re-exports are honoured everywhere: the runtime resolves each name to the
+original module's value, the exported type flows **through** the barrel (and
+through a chain of barrels) onto the consumer, and re-exporting a name the
+source does not export is flagged in the barrel itself.
+
 **Importing** — `आयात` (āyāta, "incoming") with `आ` (ā, "from") as the
 source preposition, in three forms:
 

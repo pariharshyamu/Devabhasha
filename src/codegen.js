@@ -421,6 +421,20 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         break;
       }
       case 'Export':
+        if (node.reexport) {
+          // निर्यात { a, b रूपेण c } आ "म" — forward names from another module.
+          // Desugar to (1) record the names as this module's exports, and
+          // (2) a synthesized named import that binds them locally from the
+          // source, so the existing import-linking + export-object machinery
+          // does the rest. Emits nothing inline (like an import).
+          for (const n of node.names) exports.push(n);
+          imports.push({
+            type: 'Import', kind: 'named',
+            names: node.names, imported: node.sources, namePos: node.namePos,
+            source: node.source, line: node.line, col: node.col,
+          });
+          break;
+        }
         // emit the underlying declaration; the export is recorded as metadata
         exports.push(node.name);
         genStatement(node.decl, indent);

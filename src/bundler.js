@@ -153,9 +153,24 @@ export function bundle(entryPath, { includeRuntime = true } = {}) {
 // the function-call path. Returns a flat list of { file, ...diagnostic }.
 export function checkProgram(entryPath) {
   const { modules, order } = buildGraph(entryPath);
-  // export types are syntactic (from annotations), so they need no ordering
+  // A module's export types are syntactic (from annotations) EXCEPT a
+  // re-export (निर्यात { … } आ "म"), whose type is the source module's export
+  // type. Resolve in dependency-first order (deps precede dependents in
+  // `order`), so a re-export — even a chain of them — sees a fully-resolved
+  // source. An unresolved name falls back to किमपि (gradual).
   const exportTypes = new Map();
-  for (const [path, mod] of modules) exportTypes.set(path, moduleExportTypes(mod.source));
+  for (const path of order) {
+    const mod = modules.get(path);
+    const raw = moduleExportTypes(mod.source);
+    const resolved = {};
+    for (const [name, t] of Object.entries(raw)) {
+      if (t && t.__reexport) {
+        const depTypes = exportTypes.get(resolveSource(t.__reexport.source, path)) || {};
+        resolved[name] = (t.__reexport.name in depTypes) ? depTypes[t.__reexport.name] : 'किमपि';
+      } else resolved[name] = t;
+    }
+    exportTypes.set(path, resolved);
+  }
 
   const all = [];
   for (const path of order) {
