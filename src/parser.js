@@ -74,6 +74,7 @@ export function parse(tokens) {
     if (check('RETURN')) return parseReturn();
     if (check('IF')) return parseIf();
     if (check('WHILE')) return parseWhile();
+    if (check('SWITCH')) return parseSwitch();
     if (check('FOR')) return parseFor();
     if (check('BREAK')) { next(); return { type: 'Break' }; }
     if (check('CONTINUE')) { next(); return { type: 'Continue' }; }
@@ -104,10 +105,50 @@ export function parse(tokens) {
 
   function parseVarDecl() {
     const kind = next().type; // LET | CONST
+    // destructuring:  चर [अ, ब] = सूची।   नियत { नाम, वयः } = व्यक्तिः।
+    if (check('OP', '[') || check('OP', '{')) {
+      const pattern = check('OP', '[') ? parseArrayPattern() : parseObjectPattern();
+      expect('OP', '=');
+      const init = parseExpression();
+      return { type: 'VarDecl', kind, name: null, pattern, init };
+    }
     const nt = expect('IDENT');
     let init = null;
     if (check('OP', '=')) { next(); init = parseExpression(); }
     return { type: 'VarDecl', kind, name: nt.value, init, namePos: { line: nt.line, col: nt.col } };
+  }
+
+  // [अ, ब, ग]  — array destructuring pattern (positional, no holes/rest).
+  function parseArrayPattern() {
+    expect('OP', '[');
+    const names = [];
+    while (!check('OP', ']') && !check('EOF')) {
+      const t = expect('IDENT');
+      names.push({ name: t.value, line: t.line, col: t.col });
+      if (check('OP', ',')) next();
+    }
+    expect('OP', ']');
+    return { kind: 'array', names };
+  }
+
+  // { कुञ्जी, अन्या: उपनाम }  — object destructuring; shorthand or key:alias.
+  function parseObjectPattern() {
+    expect('OP', '{');
+    const props = [];
+    while (!check('OP', '}') && !check('EOF')) {
+      const kt = peek();
+      if (!(kt.type === 'IDENT' || KEYWORD_TOKENS.has(kt.type))) {
+        throw new DevabhashaError('विभाजनदोषः: object pattern key must be a name',
+          { line: kt.line, col: kt.col, kind: 'parse' });
+      }
+      next();
+      let alias = kt.value, line = kt.line, col = kt.col;
+      if (check('OP', ':')) { next(); const at = expect('IDENT'); alias = at.value; line = at.line; col = at.col; }
+      props.push({ key: kt.value, alias, line, col });
+      if (check('OP', ',')) next();
+    }
+    expect('OP', '}');
+    return { kind: 'object', props };
   }
 
   function parseFuncDecl(isAsync = false) {
@@ -164,6 +205,49 @@ export function parse(tokens) {
     expect('OP', ')');
     const body = parseBlock();
     return { type: 'While', test, body };
+  }
+
+  // विकल्प (मूल्यम्) {
+  //   स्थिति क: ...।           # case; comma-separated values share a body
+  //   स्थिति ख, ग: ...।
+  //   अन्यथा: ...।             # default (optional)
+  // }
+  // Each branch is self-contained (implicit break — no JS fall-through), so
+  // it reads like a match, not a C switch. A branch body is the statements up
+  // to the next स्थिति / अन्यथा / '}'.
+  function parseSwitch() {
+    next(); // SWITCH
+    expect('OP', '(');
+    const discriminant = parseExpression();
+    expect('OP', ')');
+    expect('OP', '{');
+    const cases = [];       // { tests: [expr] | null (default), body: [stmt] }
+    while (!check('OP', '}') && !check('EOF')) {
+      eatSemi();
+      if (check('OP', '}')) break;
+      let tests = null;
+      if (check('CASE')) {
+        next(); // CASE
+        tests = [parseExpression()];
+        while (check('OP', ',')) { next(); tests.push(parseExpression()); }
+      } else if (check('ELSE')) {
+        next(); // ELSE → default
+      } else {
+        throw new DevabhashaError('विकल्पदोषः: expected स्थिति (case) or अन्यथा (default)',
+          { line: peek().line, col: peek().col, kind: 'parse' });
+      }
+      expect('OP', ':');
+      const body = [];
+      while (!check('CASE') && !check('ELSE') && !check('OP', '}') && !check('EOF')) {
+        eatSemi();
+        if (check('CASE') || check('ELSE') || check('OP', '}')) break;
+        body.push(parseStatement());
+        eatSemi();
+      }
+      cases.push({ tests, body });
+    }
+    expect('OP', '}');
+    return { type: 'Switch', discriminant, cases };
   }
 
   // प्रत्येकम् (वस्तु : समूह) { ... }  → for (const वस्तु of समूह)
@@ -603,7 +687,9 @@ export function parse(tokens) {
 
       next(); // consume the case-marked noun
       const slot = KARAKA_TO_SLOT[a.karaka];
-      order.push(a.karaka);
+      // record role + position so semantic analysis can flag a duplicate
+      // कारक (two arguments filling the same slot — the earlier is discarded).
+      order.push({ karaka: a.karaka, slot, word: tok.value, line: tok.line, col: tok.col });
 
       // वचन agreement: a plural कर्तृ (nominative tag, e.g. पटाः "buttons")
       // means the element distributes over the समास children — one element

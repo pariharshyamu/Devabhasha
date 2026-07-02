@@ -17,6 +17,8 @@ export const KEYWORDS = {
   'अन्यथा':   'ELSE',       // anyathā — otherwise
   'यावत्':    'WHILE',      // yāvat — "as long as" → while
   'प्रत्येकम्': 'FOR',        // pratyekam — "for each" → for-of
+  'विकल्प':    'SWITCH',     // vikalpa — "option/alternative" → switch
+  'स्थिति':    'CASE',       // sthiti — "situation/case" → case (a विकल्प branch)
   'भङ्ग':     'BREAK',      // bhaṅga — "breaking" → break
   'अनुवृत्तम्': 'CONTINUE',   // anuvṛttam — "continuing" → continue
 

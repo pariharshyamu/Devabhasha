@@ -14,14 +14,19 @@ import { METHODS, PROPERTIES, MATH_CONSTANTS, GLOBALS } from './stdlib.js';
 import { STYLE_PROPS, STYLE_VALUES } from './style.js';
 import { TAG_STEMS, EVENT_STEMS } from './karaka-web.js';
 import { describe as describeKaraka } from './vibhakti.js';
+import { semanticDiagnostics } from './semantics.js';
 
 // ---- diagnostics ----
 // Returns an array of { line, col, endCol, message, severity } for a source.
-// Empty array means the program compiles. Positions are 1-based.
+// Empty array means the program compiles cleanly. Positions are 1-based.
+//
+// A syntax (lex/parse/codegen) error is reported alone as an ERROR (severity 1)
+// — with it the AST is unusable, so semantic analysis can't run. On a clean
+// parse we return the semantic-analysis WARNINGS (severity 2): undefined names,
+// unreachable code, arity mismatches. A fully clean program yields [].
 export function diagnostics(source) {
   try {
     generate(parse(tokenize(source)), { includeRuntime: false });
-    return [];
   } catch (e) {
     if (e instanceof DevabhashaError) {
       const line = e.line || 1;
@@ -36,6 +41,7 @@ export function diagnostics(source) {
     // unknown error — still surface it
     return [{ line: 1, col: 1, endCol: 2, message: String(e.message || e), kind: 'internal', severity: 1 }];
   }
+  return semanticDiagnostics(source);
 }
 
 // ---- the vocabulary index (for completion + hover) ----
@@ -48,7 +54,9 @@ function buildVocabulary() {
   const KW_DOC = {
     'चर': 'let — mutable variable', 'नियत': 'const — constant',
     'कार्य': 'function', 'फलम्': 'return', 'यदि': 'if', 'अन्यथा': 'else',
-    'यावत्': 'while', 'प्रत्येकम्': 'for-of loop', 'भङ्ग': 'break',
+    'यावत्': 'while', 'प्रत्येकम्': 'for-of loop',
+    'विकल्प': 'switch — multi-way branch (no fall-through)',
+    'स्थिति': 'case — a विकल्प branch', 'भङ्ग': 'break',
     'अनुवृत्तम्': 'continue', 'सत्यम्': 'true', 'असत्यम्': 'false',
     'शून्यम्': 'null', 'दर्शय': 'print / console.log', 'कोष': 'object literal',
     'रचय': 'construct a DOM element', 'योजय': 'mount / append',
@@ -136,6 +144,7 @@ export function grammar(word) {
 }
 
 export { VOCAB };
+export { semanticDiagnostics } from './semantics.js';
 
 // ---- go-to-definition & rename (scope-aware, via the symbol table) ----
 import { definitionAt, occurrencesAt } from './symbols.js';
