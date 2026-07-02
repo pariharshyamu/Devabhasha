@@ -928,6 +928,11 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
   `दर्शय`, so server output is greppable and aggregatable. The reserved keys are
   authoritative — a stray field can't rewrite a line's level. Pure Devabhāṣā
   over `काल()` and `प्रदत्त`.
+- **प्रमाणम्** (authentication): built on the `गुप्ति` crypto primitives —
+  `पत्रम्.रचय`/`.सत्यापय` are tamper-evident signed tokens (HS256-style,
+  `परिणाम`-returning verify), and `गूढपदम्.रचय`/`.मेलय` are salted scrypt
+  password hashing with a constant-time check. Written in Devabhāṣā; keys are
+  passed in, salts generated, and every fallible step is a `परिणाम`.
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep
@@ -1268,6 +1273,29 @@ server emits instead of bare `दर्शय`. Together they are a service boot
 लॉग.सूचना("सेवकः आरभ्यते", कोष{ पत्तनम्: पत्तनम् })।
     → {"काल":…,"स्तरः":"सूचना","संदेशः":"सेवकः आरभ्यते","सेवा":"ग्रन्थालयः","पत्तनम्":8080}
 ```
+
+**Identity & security — `गुप्ति` + `std/प्रमाणम्`.** `गुप्ति` (gupti,
+"protection") is the cryptography namespace over Node's built-in `node:crypto`
+(no new dependency): `संक्षेप` (SHA-256 digest), `मुद्रय` (HMAC), `समान`
+(**constant-time** compare), `यादृच्छिक` (random bytes), `अनन्यांक` (UUID),
+`संकेतय`/`विसंकेतय` (base64url), and `मन्थन` (scrypt). On top, **`std/प्रमाणम्`**
+(pramāṇa, "proof") is a Devabhāṣā auth library: `पत्रम्` — tamper-evident signed
+tokens whose verify returns a `परिणाम<payload>` — and `गूढपदम्` — salted
+password hashing with a constant-time `मेलय` check:
+
+```
+आयात { पत्रम्, गूढपदम् } आ "std/प्रमाणम्"।
+नियत गूढम् = गूढपदम्.रचय("रहस्यम्")।              # "salt.scrypt" — raw pw never stored
+… गूढपदम्.मेलय(आदानम्, गूढम्) …                    # → तथ्य, constant-time
+नियत ट = पत्रम्.रचय(कोष{ उपयोक्ता: "सीता" }, कुञ्जी)।
+नियत सत्र = पत्रम्.सत्यापय(ट, कुञ्जी)।              # → परिणाम<payload>; tamper/wrong-key → विफलम्
+```
+
+`examples/प्रवेशः.deva` is a full registration + login flow that ties the whole
+backend stack together — **`आकृति` validates the signup, `गूढपदम्` hashes,
+`कोष्ठागार` persists, `पत्रम्` issues a session token, `प्रलेख` logs, and
+`उद्धृ`/`परिणाम` carry every failure as a value** — no exceptions, no plaintext
+password stored, no external dependency.
 
 ## असमकालिक — async & await
 

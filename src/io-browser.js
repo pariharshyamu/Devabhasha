@@ -27,6 +27,15 @@ const __IO = (() => {
       async fetchJson(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); try { return ok({ "स्थितिः": res.status, "प्रदत्तम्": JSON.parse(text), "सफलम्": res.ok }); } catch(e){ return err('JSON: '+(e&&e.message||e)); } } catch(e){ return err(e); } },
     },
     env(){ return null; },   // no environment variables in the browser
+    // गुप्ति — crypto is a backend concern; the browser shim offers only what
+    // the platform gives synchronously (UUID + base64), and stubs the rest.
+    crypto: {
+      संक्षेप(){ return ''; }, मुद्रय(){ return ''; }, समान(){ return false; },
+      यादृच्छिक(){ return ''; }, मन्थन(){ return ''; },
+      अनन्यांक(){ return (globalThis.crypto && globalThis.crypto.randomUUID) ? globalThis.crypto.randomUUID() : ''; },
+      संकेतय(s){ return btoa(unescape(encodeURIComponent(String(s)))); },
+      विसंकेतय(s){ return decodeURIComponent(escape(atob(String(s)))); },
+    },
   };
 })();
 `;

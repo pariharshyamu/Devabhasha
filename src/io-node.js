@@ -18,6 +18,7 @@
 // the __RT prelude produces, so awaited results inspect with फल.सफल etc.
 
 import { readFile, writeFile, unlink, readdir, access } from 'fs/promises';
+import { createHash, createHmac, timingSafeEqual, randomBytes, randomUUID, scryptSync } from 'crypto';
 
 const ok = (v) => ({ 'सफल': true, 'मूल्यम्': v, 'दोषः': null });
 const err = (e) => ({ 'सफल': false, 'मूल्यम्': null, 'दोषः': String(e && e.message || e) });
@@ -76,6 +77,21 @@ export const __IO = {
   // पर्यावरण — an environment variable's value, or null when unset (so
   // `पर्यावरण("PORT") अथवा "8080"` supplies a default).
   env(name) { return process.env[name] ?? null; },
+  // गुप्ति — cryptography (node:crypto). Digests/HMAC are hex; समान is a
+  // constant-time compare; मन्थन is scrypt key derivation for passwords.
+  crypto: {
+    संक्षेप(s) { return createHash('sha256').update(String(s)).digest('hex'); },
+    मुद्रय(s, key) { return createHmac('sha256', String(key)).update(String(s)).digest('hex'); },
+    समान(a, b) {
+      const A = Buffer.from(String(a)), B = Buffer.from(String(b));
+      return A.length === B.length && timingSafeEqual(A, B);
+    },
+    यादृच्छिक(n) { return randomBytes(Number(n) || 16).toString('hex'); },
+    अनन्यांक() { return randomUUID(); },
+    संकेतय(s) { return Buffer.from(String(s), 'utf8').toString('base64url'); },
+    विसंकेतय(s) { return Buffer.from(String(s), 'base64url').toString('utf8'); },
+    मन्थन(pwd, salt) { return scryptSync(String(pwd), String(salt), 32).toString('hex'); },
+  },
 };
 
 // A source string that defines the same __IO for embedding in `build` output.
@@ -84,6 +100,7 @@ export const __IO = {
 export const IO_NODE_SOURCE = `// --- देवभाषा I/O (Node backend) ---
 const __IO = (() => {
   const { readFile, writeFile, unlink, readdir, access } = require('fs/promises');
+  const { createHash, createHmac, timingSafeEqual, randomBytes, randomUUID, scryptSync } = require('crypto');
   const ok = (v) => ({ "सफल": true, "मूल्यम्": v, "दोषः": null });
   const err = (e) => ({ "सफल": false, "मूल्यम्": null, "दोषः": String(e && e.message || e) });
   return {
@@ -101,6 +118,16 @@ const __IO = (() => {
       async fetchJson(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); try { return ok({ "स्थितिः": res.status, "प्रदत्तम्": JSON.parse(text), "सफलम्": res.ok }); } catch(e){ return err('JSON: '+(e&&e.message||e)); } } catch(e){ return err(e); } },
     },
     env(name){ return process.env[name] ?? null; },
+    crypto: {
+      संक्षेप(s){ return createHash('sha256').update(String(s)).digest('hex'); },
+      मुद्रय(s,key){ return createHmac('sha256', String(key)).update(String(s)).digest('hex'); },
+      समान(a,b){ const A=Buffer.from(String(a)), B=Buffer.from(String(b)); return A.length===B.length && timingSafeEqual(A,B); },
+      यादृच्छिक(n){ return randomBytes(Number(n)||16).toString('hex'); },
+      अनन्यांक(){ return randomUUID(); },
+      संकेतय(s){ return Buffer.from(String(s),'utf8').toString('base64url'); },
+      विसंकेतय(s){ return Buffer.from(String(s),'base64url').toString('utf8'); },
+      मन्थन(pwd,salt){ return scryptSync(String(pwd), String(salt), 32).toString('hex'); },
+    },
   };
 })();
 `;
