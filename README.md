@@ -151,12 +151,24 @@ resolve to the most construction-useful reading — documented on each row in
 the bare surface — `सूच्यः` and `वाक्यः` share an ending but belong to
 different classes — because declension class is *lexical*, a property of the
 प्रातिपदिक. So each vowel-final construction stem is tagged with its class
-(`VOWEL_STEMS` in `vibhakti.js`) and its true nominative dual/plural are
-*generated* from that class and indexed for exact-match lookup, ahead of the
-generic matcher. Adding another vowel-final tag is one row; other stems still
-flow through the generic paradigm. ASCII words and uninflected stems are
-correctly *not* treated as case-marked, which is what keeps free word order
-parseable.
+(`VOWEL_STEMS` in `vibhakti.js`) and its **full class-specific paradigm** — the
+नदी (`सूची`), मति (`पङ्क्ति`), and शत्रु (`सेतु`) declensions — is *generated*
+from that class and indexed for exact-match lookup, ahead of the generic
+matcher. That covers not just the nominative dual/plural but the whole oblique
+range across all three वचन, so classical forms parse with the right stem *and*
+kāraka:
+
+| | instrumental sg | dative sg | genitive sg | locative pl |
+|---|---|---|---|---|
+| `सूची` (नदी) | `सूच्या` | `सूच्यै` | `सूच्याः` | `सूचीषु` |
+| `पङ्क्ति` (मति) | `पङ्क्त्या` | `पङ्क्तये` | `पङ्क्तेः` | `पङ्क्तिषु` |
+| `सेतु` (शत्रु) | `सेतुना` | `सेतवे` | `सेतोः` | `सेतुषु` |
+
+The प्रथमा/द्वितीया singular (`सूचीः`, `सूचीम्`) stay with the generic matcher —
+the append-a-marker convention already yields the right surface there. Adding
+another vowel-final tag is one row; other stems still flow through the generic
+paradigm. ASCII words and uninflected stems are correctly *not* treated as
+case-marked, which is what keeps free word order parseable.
 
 Tag and event vocabulary lives in `src/karaka-web.js` (`पट`→button,
 `शीर्ष`→h1, `स्पर्श`→click, …).
@@ -1163,8 +1175,10 @@ Open directions from here:
 1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`) with flow into
    `प्रत्येकम्` loop variables and array-destructuring are **now in place**. Still
    open: object shapes and function types, and type-aware hover.
-2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems, and
-   further declensions, extending `vibhakti.js` (`PARADIGM_TABLE` / `VOWEL_STEMS`).
+2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
+   नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
+   classes (ऋकारान्त, consonant-final) and gendered variants, extending
+   `vibhakti.js` (`PARADIGM_TABLE` / `VOWEL_STEMS` / `NOMINAL_DECLENSION`).
 3. **वचन semantics for द्विवचन** — the dual currently parses but builds a single
    element; a "pair" construction could give it meaning to match बहुवचन groups.
 4. **Pattern matching** — extend `विकल्प` beyond value equality to destructuring

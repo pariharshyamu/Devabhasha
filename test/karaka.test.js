@@ -86,9 +86,60 @@ for (const [w, [stem, n]] of Object.entries(vowel)) {
   ok('vowel-final ' + w,
      a?.karaka === KARAKA.KARTR && a?.number === n && a?.stem === stem);
 }
+// --- vowel-final obliques: the full नदी/मति/शत्रु paradigm ------------------
+// Classical oblique forms must recover BOTH the pratipadika and the right
+// kāraka — the generic अकारान्त matcher gets these wrong (or returns null).
+// Each entry: surface → [ stem, kāraka, वचन ].
+const vowelOblique = {
+  // ईकारान्त (नदी-type): सूची
+  'सूच्या':     ['सूची', KARAKA.KARANA,     VACANA.EKA],  // ins sg   नद्या
+  'सूच्यै':     ['सूची', KARAKA.SAMPRADANA, VACANA.EKA],  // dat sg   नद्यै
+  'सूच्याः':    ['सूची', KARAKA.SAMBANDHA,  VACANA.EKA],  // abl/gen sg → gen
+  'सूच्याम्':   ['सूची', KARAKA.ADHIKARANA, VACANA.EKA],  // loc sg   नद्याम्
+  'सूचीभ्याम्': ['सूची', KARAKA.KARANA,     VACANA.DVI],  // ins/dat/abl du → ins
+  'सूच्योः':    ['सूची', KARAKA.SAMBANDHA,  VACANA.DVI],  // gen/loc du → gen
+  'सूचीभिः':    ['सूची', KARAKA.KARANA,     VACANA.BAHU], // ins pl   नदीभिः
+  'सूचीभ्यः':   ['सूची', KARAKA.SAMPRADANA, VACANA.BAHU], // dat/abl pl → dat
+  'सूचीनाम्':   ['सूची', KARAKA.SAMBANDHA,  VACANA.BAHU], // gen pl   नदीनाम्
+  'सूचीषु':     ['सूची', KARAKA.ADHIKARANA, VACANA.BAHU], // loc pl   नदीषु
+  // इकारान्त (मति-type): पङ्क्ति
+  'पङ्क्त्या':   ['पङ्क्ति', KARAKA.KARANA,     VACANA.EKA],  // ins sg
+  'पङ्क्तये':    ['पङ्क्ति', KARAKA.SAMPRADANA, VACANA.EKA],  // dat sg
+  'पङ्क्तेः':    ['पङ्क्ति', KARAKA.SAMBANDHA,  VACANA.EKA],  // abl/gen sg → gen
+  'पङ्क्तौ':     ['पङ्क्ति', KARAKA.ADHIKARANA, VACANA.EKA],  // loc sg
+  'पङ्क्तिभिः':  ['पङ्क्ति', KARAKA.KARANA,     VACANA.BAHU], // ins pl
+  'पङ्क्तीनाम्': ['पङ्क्ति', KARAKA.SAMBANDHA,  VACANA.BAHU], // gen pl
+  'पङ्क्तिषु':   ['पङ्क्ति', KARAKA.ADHIKARANA, VACANA.BAHU], // loc pl
+  // उकारान्त (शत्रु-type): सेतु
+  'सेतुना':   ['सेतु', KARAKA.KARANA,     VACANA.EKA],  // ins sg   भानुना
+  'सेतवे':    ['सेतु', KARAKA.SAMPRADANA, VACANA.EKA],  // dat sg   शत्रवे
+  'सेतोः':    ['सेतु', KARAKA.SAMBANDHA,  VACANA.EKA],  // abl/gen sg → gen (शत्रोः)
+  'सेतौ':     ['सेतु', KARAKA.ADHIKARANA, VACANA.EKA],  // loc sg   शत्रौ
+  'सेत्वोः':  ['सेतु', KARAKA.SAMBANDHA,  VACANA.DVI],  // gen/loc du → gen
+  'सेतुभिः':  ['सेतु', KARAKA.KARANA,     VACANA.BAHU], // ins pl
+  'सेतूनाम्': ['सेतु', KARAKA.SAMBANDHA,  VACANA.BAHU], // gen pl
+  'सेतुषु':   ['सेतु', KARAKA.ADHIKARANA, VACANA.BAHU], // loc pl
+};
+for (const [w, [stem, k, n]] of Object.entries(vowelOblique)) {
+  const a = analyze(w);
+  ok('vowel oblique ' + w,
+     a?.stem === stem && a?.karaka === k && a?.number === n);
+}
+// syncretism sanity: सेतोः is genitive sg, NOT the nominative the generic
+// matcher used to guess; पङ्क्तौ is locative sg, NOT a nominative dual.
+ok('सेतोः is genitive (not generic nom)', analyze('सेतोः')?.case === 'genitive');
+ok('पङ्क्तौ is locative sg (not nom du)',
+   analyze('पङ्क्तौ')?.case === 'locative' && analyze('पङ्क्तौ')?.number === VACANA.EKA);
+// describe() renders the oblique with its Sanskrit vibhakti + kāraka
+ok('describe सूच्यै', describe('सूच्यै')?.vibhakti === 'चतुर्थी'
+   && describe('सूच्यै')?.karakaSa === 'सम्प्रदान' && describe('सूच्यै')?.stem === 'सूची');
+
 // established singular convention still flows through the generic matcher
 ok('सूचीः stays nom sg (convention)', analyze('सूचीः')?.number === VACANA.EKA
    && analyze('सूचीः')?.stem === 'सूची');
+// acc sg of a vowel stem is handled generically with the right stem
+ok('सूचीम् acc sg via generic', analyze('सूचीम्')?.karaka === KARAKA.KARMAN
+   && analyze('सूचीम्')?.stem === 'सूची' && analyze('सूचीम्')?.number === VACANA.EKA);
 // the disambiguation guard: अकारान्त words ending in ्यः are NOT vowel plurals
 ok('वाक्यः stays अकारान्त nom sg',
    analyze('वाक्यः')?.stem === 'वाक्य' && analyze('वाक्यः')?.number === VACANA.EKA);
