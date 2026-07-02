@@ -126,6 +126,8 @@ export const GLOBALS = {
   'सूचीवत्':      'Array.isArray',       // sūcīvat — "list-like" → Array.isArray
   'प्रदत्त':      '__RT.json',           // pradatta — "data" → JSON parse/serialize (Result-returning)
   'अङ्कय':       '__RT.toNumber',       // aṅkaya — "to number" → parse string→number (Result)
+  'काल':        '__RT.now',            // kāla — "time" → current epoch milliseconds
+  'पर्यावरण':    '__IO.env',            // paryāvaraṇa — "environment" → env var or शून्यम्
   'प्रभाव':       '__DB.effect',         // prabhāva — "influence/effect" → fine-grained reactive effect
   'बन्ध':        '__DB.bindText',       // bandha — "binding" → a text node bound to a reactive thunk
   'आवली':        '__DB.keyedList',      // āvalī — "row/series" → keyed list reconciliation

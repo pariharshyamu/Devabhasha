@@ -45,6 +45,9 @@ const __RT = {
     const n = Number(s);
     return Number.isNaN(n) ? __RT.err("अङ्कः न (not a number): " + s) : __RT.ok(n);
   },
+  // काल — the current time in epoch milliseconds (host-independent). A
+  // duration is काल() - start; a logger stamps each line with it.
+  now() { return Date.now(); },
 };
 `;
 

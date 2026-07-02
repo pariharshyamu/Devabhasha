@@ -73,6 +73,9 @@ export const __IO = {
       } catch (e) { return err(e); }
     },
   },
+  // पर्यावरण — an environment variable's value, or null when unset (so
+  // `पर्यावरण("PORT") अथवा "8080"` supplies a default).
+  env(name) { return process.env[name] ?? null; },
 };
 
 // A source string that defines the same __IO for embedding in `build` output.
@@ -97,6 +100,7 @@ const __IO = (() => {
       async fetch(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); return ok({ "स्थितिः": res.status, "पाठः": text, "सफलम्": res.ok }); } catch(e){ return err(e); } },
       async fetchJson(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); try { return ok({ "स्थितिः": res.status, "प्रदत्तम्": JSON.parse(text), "सफलम्": res.ok }); } catch(e){ return err('JSON: '+(e&&e.message||e)); } } catch(e){ return err(e); } },
     },
+    env(name){ return process.env[name] ?? null; },
   };
 })();
 `;

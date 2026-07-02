@@ -26,6 +26,7 @@ const __IO = (() => {
       async fetch(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); return ok({ "स्थितिः": res.status, "पाठः": text, "सफलम्": res.ok }); } catch(e){ return err(e); } },
       async fetchJson(url, options){ try { const res = await fetch(url, options||undefined); const text = await res.text(); try { return ok({ "स्थितिः": res.status, "प्रदत्तम्": JSON.parse(text), "सफलम्": res.ok }); } catch(e){ return err('JSON: '+(e&&e.message||e)); } } catch(e){ return err(e); } },
     },
+    env(){ return null; },   // no environment variables in the browser
   };
 })();
 `;

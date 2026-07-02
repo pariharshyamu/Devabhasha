@@ -921,6 +921,13 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
   (count). The optional `परीक्षकः` is a `record → परिणाम` validator (an आकृति
   wraps into one) run before every insert. Built on `सञ्चिका`'s JSON I/O — no
   new host dep, so a bundle stays self-contained. See *Persistence* below.
+- **प्रलेख** (structured logging): `प्रलेखकः(base?)` builds a logger whose
+  base fields ride on every line; `प्रलेख` is a ready default. Each method —
+  `निदान`/`सूचना`/`चेतावनी`/`दोष` — emits one compact JSON line (a `काल`
+  timestamp, a `स्तरः` level, a `संदेशः`, and any structured fields) via
+  `दर्शय`, so server output is greppable and aggregatable. The reserved keys are
+  authoritative — a stray field can't rewrite a line's level. Pure Devabhāṣā
+  over `काल()` and `प्रदत्त`.
 - **परीक्षा** (test framework): `परीक्षा(नाम, fn)` registers and runs a test,
   `अपेक्ष(actual)` returns an asserter (`.समम्`/equal, `.असमम्`/not-equal,
   `.सत्यम्ता`/truthy, `.असत्यम्ता`/falsy), `समम्(अ, ब)` is a standalone deep
@@ -1243,6 +1250,23 @@ data in one step: `सञ्चिका.पठप्रदत्त`/`लिख
 ```
 चर विन्यासः = (प्रतीक्षा सञ्चिका.पठप्रदत्त("config.json")) अथवा कोष{ }।  # parsed config, or {}
 चर सङ्ख्या = अङ्कय(आदानम्) अथवा ०।                                      # parsed number, or 0
+```
+
+**Service essentials — environment, time, logging.** `पर्यावरण(नाम)`
+(paryāvaraṇa, "environment") reads an environment variable, returning its value
+or `शून्यम्`, so `पर्यावरण("PORT") अथवा "8080"` is config-with-a-default in one
+line. `काल()` (kāla, "time") is the current epoch-ms clock (host-independent —
+a duration is just `काल() - आरम्भः`). And **`std/प्रलेख`** is a structured
+logger: one compact JSON line per event, level-tagged and timestamped, that a
+server emits instead of bare `दर्शय`. Together they are a service bootstrap —
+`examples/सेवा-आरम्भः.deva` reads config from the env, validates it with an
+`आकृति`, and logs startup + a timed unit of work:
+
+```
+नियत पत्तनम् = अङ्कय(पर्यावरण("PORT") अथवा "8080") अथवा ८०८०।   # env → सङ्ख्या, with a default
+नियत लॉग = प्रलेखकः(कोष{ सेवा: "ग्रन्थालयः" })।                  # base fields on every line
+लॉग.सूचना("सेवकः आरभ्यते", कोष{ पत्तनम्: पत्तनम् })।
+    → {"काल":…,"स्तरः":"सूचना","संदेशः":"सेवकः आरभ्यते","सेवा":"ग्रन्थालयः","पत्तनम्":8080}
 ```
 
 ## असमकालिक — async & await
