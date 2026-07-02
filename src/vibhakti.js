@@ -15,9 +15,14 @@
 //
 // SCOPE. All three वचन (एक/द्वि/बहु — singular/dual/plural) across the seven
 // विभक्ति, for the generic अकारान्त-style paradigm, plus आकारान्त feminine
-// obliques and णत्व. Syncretic forms (Sanskrit reuses one ending for several
+// obliques and णत्व. The इ/ई/उ vowel-final construction stems additionally
+// carry their genuine class-specific paradigm (नदी / मति / शत्रु declensions) —
+// not just the nominative dual/plural, but the full oblique singular, dual, and
+// plural — so classical forms like सूच्यै, सेतोः, पङ्क्तिषु parse with the right
+// stem AND kāraka. Syncretic forms (Sanskrit reuses one ending for several
 // cells) resolve to the most construction-useful reading; see SYNCRETISM
-// notes on the rows. Extending further = adding rows to PARADIGM_TABLE.
+// notes on the rows. Extending further = adding rows to PARADIGM_TABLE (generic
+// stems) or to NOMINAL_DECLENSION (a vowel-final class's paradigm).
 
 // The six kārakas + two non-kāraka relations we also accept (sambandha =
 // genitive "of", structurally useful for property access).
@@ -130,38 +135,85 @@ const VOWEL_STEMS = [
   ['सेतु',    'u-m'],  // उकारान्त पुंल्लिङ्ग   (शत्रु-type) → a/anchor
 ];
 
-// Per-class generators of the NON-generic nominative dual/plural — the forms
-// the generic matcher can't build. `base` is the stem minus its final vowel
-// matra (सूची→सूच, पङ्क्ति→पङ्क्त, सेतु→सेत), left consonant-final. Each entry
-// is [ surfaceForm, vacana ].
+// Per-class generators of the class-specific forms the generic अकारान्त matcher
+// cannot recover correctly — the नदी / मति / शत्रु declensions. `base` is the
+// stem minus its final vowel matra (सूची→सूच, पङ्क्ति→पङ्क्त, सेतु→सेत), left
+// consonant-final. Each entry is [ surfaceForm, vacana, vibhaktiKey ].
+//
+// Coverage: the nominative dual/plural (which the generic matcher can't build),
+// plus the full oblique paradigm — instrumental, dative, ablative, genitive,
+// locative — across एक/द्वि/बहु. The प्रथमा एकवचन (सूचीः, पङ्क्तिः, सेतुः) and the
+// द्वितीया एकवचन (सूचीम्, पङ्क्तिम्, सेतुम्) are deliberately LEFT to the generic
+// matcher: the append-a-marker convention already yields the correct classical
+// surface and stem for those two cells. Accusative plural is omitted — its ई/इ
+// surface (सूचीः / नदीः) collides with the established प्रथमा एकवचन convention.
+// Syncretic cells fold to the most construction-useful reading, matching the
+// अकारान्त choices above (ins/dat/abl du → instrumental; gen/loc → genitive;
+// dat/abl pl → dative; abl/gen sg → genitive).
 const NOMINAL_DECLENSION = {
+  // ईकारान्त स्त्रीलिङ्ग (नदी-type): सूची, base सूच.
   'ii-f': base => [
-    [base + '्यः', VACANA.BAHU],  // सूच्यः   — nom pl (नद्यः-type)
-    [base + '्यौ', VACANA.DVI],   // सूच्यौ   — nom du (नद्यौ-type)
+    [base + '्यः',    VACANA.BAHU, 'prathama'],  // सूच्यः    nom pl   (नद्यः)
+    [base + '्यौ',    VACANA.DVI,  'prathama'],  // सूच्यौ    nom du   (नद्यौ)
+    [base + '्या',    VACANA.EKA,  'trtiya'],    // सूच्या    ins sg   (नद्या)
+    [base + '्यै',    VACANA.EKA,  'caturthi'],  // सूच्यै    dat sg   (नद्यै)
+    [base + '्याः',   VACANA.EKA,  'shashthi'],  // सूच्याः   abl/gen sg → gen (नद्याः)
+    [base + '्याम्',  VACANA.EKA,  'saptami'],   // सूच्याम्  loc sg   (नद्याम्)
+    [base + 'ीभ्याम्', VACANA.DVI, 'trtiya'],    // सूचीभ्याम् ins/dat/abl du → ins
+    [base + '्योः',   VACANA.DVI,  'shashthi'],  // सूच्योः   gen/loc du → gen (नद्योः)
+    [base + 'ीभिः',   VACANA.BAHU, 'trtiya'],    // सूचीभिः   ins pl   (नदीभिः)
+    [base + 'ीभ्यः',  VACANA.BAHU, 'caturthi'],  // सूचीभ्यः  dat/abl pl → dat (नदीभ्यः)
+    [base + 'ीनाम्',  VACANA.BAHU, 'shashthi'],  // सूचीनाम्  gen pl   (नदीनाम्)
+    [base + 'ीषु',    VACANA.BAHU, 'saptami'],   // सूचीषु    loc pl   (नदीषु)
   ],
+  // इकारान्त स्त्रीलिङ्ग (मति-type): पङ्क्ति, base पङ्क्त.
   'i-f': base => [
-    [base + 'यः', VACANA.BAHU],   // पङ्क्तयः — nom pl (मतयः-type)
-    [base + 'ी',  VACANA.DVI],    // पङ्क्ती  — nom du (मती-type)
+    [base + 'यः',     VACANA.BAHU, 'prathama'],  // पङ्क्तयः  nom pl   (मतयः)
+    [base + 'ी',      VACANA.DVI,  'prathama'],  // पङ्क्ती   nom du   (मती)
+    [base + '्या',    VACANA.EKA,  'trtiya'],    // पङ्क्त्या ins sg   (मत्या)
+    [base + 'ये',     VACANA.EKA,  'caturthi'],  // पङ्क्तये  dat sg   (मतये)
+    [base + 'ेः',     VACANA.EKA,  'shashthi'],  // पङ्क्तेः  abl/gen sg → gen (मतेः)
+    [base + 'ौ',      VACANA.EKA,  'saptami'],   // पङ्क्तौ   loc sg   (मतौ)
+    [base + 'िभ्याम्',VACANA.DVI,  'trtiya'],    // पङ्क्तिभ्याम् ins/dat/abl du → ins
+    [base + '्योः',   VACANA.DVI,  'shashthi'],  // पङ्क्त्योः gen/loc du → gen (मत्योः)
+    [base + 'िभिः',   VACANA.BAHU, 'trtiya'],    // पङ्क्तिभिः ins pl   (मतिभिः)
+    [base + 'िभ्यः',  VACANA.BAHU, 'caturthi'],  // पङ्क्तिभ्यः dat/abl pl → dat (मतिभ्यः)
+    [base + 'ीनाम्',  VACANA.BAHU, 'shashthi'],  // पङ्क्तीनाम् gen pl   (मतीनाम्)
+    [base + 'िषु',    VACANA.BAHU, 'saptami'],   // पङ्क्तिषु  loc pl   (मतिषु)
   ],
+  // उकारान्त पुंल्लिङ्ग (शत्रु/भानु-type): सेतु, base सेत.
   'u-m': base => [
-    [base + 'वः', VACANA.BAHU],   // सेतवः   — nom pl (गुण उ→अव, शत्रवः-type)
-    [base + 'ू',  VACANA.DVI],    // सेतू    — nom du (शत्रू-type)
+    [base + 'वः',     VACANA.BAHU, 'prathama'],  // सेतवः    nom pl   (गुण उ→अव, शत्रवः)
+    [base + 'ू',      VACANA.DVI,  'prathama'],  // सेतू     nom du   (शत्रू)
+    [base + 'ुना',    VACANA.EKA,  'trtiya'],    // सेतुना   ins sg   (भानुना)
+    [base + 'वे',     VACANA.EKA,  'caturthi'],  // सेतवे    dat sg   (शत्रवे)
+    [base + 'ोः',     VACANA.EKA,  'shashthi'],  // सेतोः    abl/gen sg → gen (शत्रोः)
+    [base + 'ौ',      VACANA.EKA,  'saptami'],   // सेतौ     loc sg   (शत्रौ)
+    [base + 'ुभ्याम्',VACANA.DVI,  'trtiya'],    // सेतुभ्याम् ins/dat/abl du → ins
+    [base + '्वोः',   VACANA.DVI,  'shashthi'],  // सेत्वोः  gen/loc du → gen (शत्र्वोः)
+    [base + 'ुभिः',   VACANA.BAHU, 'trtiya'],    // सेतुभिः  ins pl   (शत्रुभिः)
+    [base + 'ुभ्यः',  VACANA.BAHU, 'caturthi'],  // सेतुभ्यः dat/abl pl → dat (शत्रुभ्यः)
+    [base + 'ूनाम्',  VACANA.BAHU, 'shashthi'],  // सेतूनाम् gen pl   (शत्रूणाम्→सेतूनाम्)
+    [base + 'ुषु',    VACANA.BAHU, 'saptami'],   // सेतुषु   loc pl   (शत्रुषु)
   ],
 };
 
-// surfaceForm → analysis. All are प्रथमा (kartr); only वचन varies.
+// surfaceForm → analysis, indexed for each vowel-final construction stem and
+// checked before the generic matcher. वचन and विभक्ति both vary now (the older
+// build hard-coded प्रथमा; the paradigm rows carry their own vibhaktiKey).
 const VOWEL_FORMS = new Map();
 for (const [stem, cls] of VOWEL_STEMS) {
   const base = stem.slice(0, -1);            // drop final vowel matra
-  for (const [form, number] of NOMINAL_DECLENSION[cls](base)) {
+  for (const [form, number, vibhaktiKey] of NOMINAL_DECLENSION[cls](base)) {
+    const v = VIBHAKTI[vibhaktiKey];
     VOWEL_FORMS.set(form, {
       stem,
-      case: VIBHAKTI.prathama.en,
-      karaka: KARAKA.KARTR,
+      case: v.en,
+      karaka: v.karaka,
       number,
       ending: form.slice(base.length),       // the class-specific tail
       cls,
-      vibhakti: 'prathama',
+      vibhakti: vibhaktiKey,
     });
   }
 }
