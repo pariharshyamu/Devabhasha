@@ -356,8 +356,48 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
   // unique temp counter for pattern-matching विकल्प (each holds the evaluated
   // discriminant in its own block-scoped const, so nested matches don't clash)
   let matchCounter = 0;
+  // उद्धृ (Result-propagation): a unique temp per unwrap, and the current
+  // function nesting depth — उद्धृ's early-return needs an enclosing कार्य.
+  let uddhrCounter = 0;
+  let funcDepth = 0;
   // inside a रूप style-value expression: bare color/style words → CSS literals
   let inStyleValue = false;
+
+  // Collect the उद्धृ nodes inside ONE statement's own expression, in
+  // post-order (inner unwraps first) — but NOT descending into a nested
+  // function, whose उद्धृ propagates out of THAT function, not this one.
+  function collectUddhr(node, out) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FuncExpr' || node.type === 'FuncDecl') return;
+    if (node.type === 'Uddhr') { collectUddhr(node.argument, out); out.push(node); return; }
+    for (const k of Object.keys(node)) {
+      if (k === '_temp' || k === 'line' || k === 'col') continue;
+      const v = node[k];
+      if (Array.isArray(v)) v.forEach(x => collectUddhr(x, out));
+      else if (v && typeof v === 'object') collectUddhr(v, out);
+    }
+  }
+
+  // Before a statement that contains उद्धृ, emit its guards: evaluate each
+  // परिणाम once into a temp and short-circuit-return the विफलम् — then the
+  // उद्धृ expression itself compiles to that temp's मूल्यम् (see genExpr).
+  function hoistStmtUddhr(node, indent) {
+    const field = { VarDecl: 'init', Return: 'argument', ExpressionStatement: 'expression',
+      If: 'test', While: 'test', ForOf: 'iterable', Switch: 'discriminant' }[node.type];
+    const expr = field && node[field];
+    if (!expr) return;
+    const ups = [];
+    collectUddhr(expr, ups);
+    if (!ups.length) return;
+    if (funcDepth === 0)
+      throw new DevabhashaError('उद्धृदोषः: उद्धृ (Result-propagation) is only valid inside a कार्य (function)',
+        { line: ups[0].line, col: ups[0].col, kind: 'codegen' });
+    for (const u of ups) {
+      u._temp = `__u${uddhrCounter++}`;
+      emit(`const ${u._temp} = `); genExpr(u.argument); emit(`;\n${indent}`);
+      emit(`if (!${u._temp} || ${u._temp}["सफल"] !== true) return ${u._temp};\n${indent}`);
+    }
+  }
 
   function gen(node, indent = '') {
     switch (node.type) {
@@ -371,6 +411,7 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
 
   function genStatement(node, indent) {
     recordMapping(node);
+    hoistStmtUddhr(node, indent);   // Result-propagation guards, if any (else no-op)
     switch (node.type) {
       case 'VarDecl': {
         const kw = node.kind === 'CONST' ? 'const' : 'let';
@@ -449,7 +490,9 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         emit(`${node.async ? 'async ' : ''}function ${id(node.name)}(${node.params.map(id).join(', ')}) `);
         const savedAD = asyncDepth;
         asyncDepth = node.async ? 1 : 0;   // entering a function resets context
+        funcDepth++;
         genBlock(node.body, indent);
+        funcDepth--;
         asyncDepth = savedAD;
         break;
       }
@@ -749,10 +792,19 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         emit(`${node.async ? 'async ' : ''}function (${node.params.map(id).join(', ')}) `);
         const savedAD = asyncDepth;
         asyncDepth = node.async ? 1 : 0;
+        funcDepth++;
         genBlock(node.body, '');
+        funcDepth--;
         asyncDepth = savedAD;
         break;
       }
+      case 'Uddhr':
+        // set by hoistStmtUddhr before this statement; the guard already ran.
+        if (!node._temp)
+          throw new DevabhashaError('उद्धृदोषः: उद्धृ (Result-propagation) cannot be used in this position',
+            { line: node.line, col: node.col, kind: 'codegen' });
+        emit(`${node._temp}["मूल्यम्"]`);
+        break;
       case 'Await':
         if (asyncDepth === 0) {
           throw new DevabhashaError('प्रतीक्षादोषः: प्रतीक्षा (await) is only valid inside an असमकालिक (async) function',

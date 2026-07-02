@@ -1236,6 +1236,30 @@ with `await`, which is exactly the I/O case:
 first `Ok` wins) and also guards plain `null`/non-Result values, so it
 doubles as a nullish fallback.
 
+**`उद्धृ` — unwrap-or-propagate.** Where `अथवा` supplies a fallback, `उद्धृ`
+(uddhṛ, "lift out") propagates. `उद्धृ E` evaluates a `परिणाम`: on `सफल` the
+expression *is* its `मूल्यम्`; on `विफलम्` it **returns that `विफलम्` from the
+enclosing `कार्य`**, unchanged. It is Devabhāṣā's answer to Rust's `?` — the
+way to write a sequence of fallible steps top-to-bottom instead of nesting a
+`यदि (र.सफल)` at every one:
+
+```
+कार्य विन्यासम् (पथ) {
+    नियत कच्चम् = उद्धृ सञ्चिका.पठ(पथ)।          # on Err → return that Err now
+    नियत प्रदत्तम् = उद्धृ प्रदत्त.विश्लेषय(कच्चम्)। # ditto — parse error propagates
+    फलम् साधितम्(प्रदत्तम्.नाम)।                   # only runs when both succeeded
+}
+```
+
+It stays true to the no-exceptions design: `उद्धृ` is **erased** — the codegen
+desugars each unwrap into a guard (`evaluate once; if not सफल, return it`)
+emitted *before* the containing statement, so there is no new runtime and no
+thrown control flow. Several `उद्धृ` in one expression short-circuit left to
+right (the first `विफलम्` wins), and the early return targets the **nearest**
+enclosing function, so an `उद्धृ` inside a callback propagates out of the
+callback, not its host. Using `उद्धृ` outside any `कार्य` is a compile error
+(there is nothing to return from).
+
 ## दोषनिरूपणम् — error reporting
 
 Compiler errors are structured (`DevabhashaError` with `line`, `col`, and a

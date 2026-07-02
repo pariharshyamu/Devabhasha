@@ -513,6 +513,13 @@ export function parse(tokens) {
       next();
       return { type: 'Await', argument: parseUnary() };
     }
+    // उद्धृ <expr> — unwrap a परिणाम: yield its मूल्यम् on सफल, else return the
+    // विफलम् from the enclosing कार्य (Rust's `?`). Erased-free control flow,
+    // desugared by the codegen into a guard before the containing statement.
+    if (check('UDDHR')) {
+      const t = next();
+      return { type: 'Uddhr', argument: parseUnary(), line: t.line, col: t.col };
+    }
     return parsePostfix();
   }
 
