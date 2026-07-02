@@ -846,7 +846,14 @@ The standard library is itself written **in Devabhāṣā**, as `.deva` modules
 under `examples/stdlib/` — the clearest proof the module system earns its
 keep, and the "move features to libraries" principle in practice. Each is
 plain Devabhāṣā built on the array/string/object primitives, with zero
-compiler support:
+compiler support. The data-structure modules (सूची / पाठ / कोष) are also
+**typed** — signatures carry प्रकार annotations wherever the type is genuinely
+concrete (`योगः` wants `गण<सङ्ख्या>`, `आवर्तय` an `अक्षर` and a `सङ्ख्या`
+count, a predicate a `कार्य(किमपि): तथ्य`). Element-polymorphic helpers keep a
+bare `गण`/`किमपि`, since the type layer has no generics and an honest `किमपि`
+beats a false `गण<सङ्ख्या>`. The annotations are erased, so runtime is
+unchanged — but `devabhasha check` now argument-checks calls *through* a `std/`
+import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
 
 - **सूची** (list): `योगः` (sum), `गुणनफलम्` (product), `न्यूनीकरणम्` (fold),
   `अन्वेषय` (find), `सन्ति`/`सर्वे` (any/all), `न्यूनतमम्`/`महत्तमम्`
