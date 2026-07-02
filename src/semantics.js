@@ -49,6 +49,11 @@ export function semanticDiagnostics(source) {
   const isKnown = (scope, name) =>
     lookup(scope, name) != null || KNOWN_GLOBALS.has(name) || STYLE_WORDS.has(name);
 
+  // the local names a destructuring pattern binds.
+  const patternNames = pattern =>
+    pattern.kind === 'array' ? pattern.names.map(n => n.name)
+                             : pattern.props.map(p => p.alias);
+
   // arity of a declaration whose value is a fixed-param function, else null.
   const fnArity = node => {
     if (!node) return null;
@@ -65,7 +70,11 @@ export function semanticDiagnostics(source) {
       if (!s || typeof s !== 'object') continue;
       const decl = s.type === 'Export' ? s.decl : s;
       switch (decl.type) {
-        case 'VarDecl': case 'StateDecl': case 'StyleDecl':
+        case 'VarDecl':
+          if (decl.pattern) patternNames(decl.pattern).forEach(n => declare(scope, n));
+          else declare(scope, decl.name, { arity: fnArity(decl) ?? undefined });
+          break;
+        case 'StateDecl': case 'StyleDecl':
           declare(scope, decl.name, { arity: fnArity(decl) ?? undefined });
           break;
         case 'FuncDecl':
@@ -125,6 +134,13 @@ export function semanticDiagnostics(source) {
       case 'While':
         walkExpr(node.test, scope);
         node.body && walkBody(node.body.body || node.body, makeScope(scope));
+        return;
+      case 'Switch':
+        walkExpr(node.discriminant, scope);
+        for (const c of node.cases) {
+          (c.tests || []).forEach(t => walkExpr(t, scope));
+          walkBody(c.body, makeScope(scope));   // each branch is its own scope
+        }
         return;
       case 'Block':
         walkBody(node.body, makeScope(scope));

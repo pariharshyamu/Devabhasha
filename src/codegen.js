@@ -371,6 +371,19 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
     switch (node.type) {
       case 'VarDecl': {
         const kw = node.kind === 'CONST' ? 'const' : 'let';
+        if (node.pattern) {
+          // destructuring: [अ,ब] → [a, b] ; { कुञ्जी, अन्या: उपनाम } → { kuñjī: kuñjī, anyā: upanāma }
+          if (node.pattern.kind === 'array') {
+            emit(`${kw} [${node.pattern.names.map(n => id(n.name)).join(', ')}]`);
+          } else {
+            // object keys are stored raw (कोष emits { "नाम": … }), so extract
+            // by the raw Sanskrit key and bind the transliterated local.
+            const parts = node.pattern.props.map(p => `${JSON.stringify(p.key)}: ${id(p.alias)}`);
+            emit(`${kw} { ${parts.join(', ')} }`);
+          }
+          emit(' = '); genExpr(node.init); emit(';');
+          break;
+        }
         emit(`${kw} ${id(node.name)}`);
         if (node.init) { emit(' = '); genExpr(node.init); }
         emit(';');
@@ -451,6 +464,31 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
         emit(') ');
         genBlock(node.body, indent);
         break;
+      case 'Switch': {
+        // Each branch is self-contained: a block scope + implicit break, so
+        // there is no C-style fall-through. Comma-separated tests stack as
+        // consecutive `case` labels sharing one body.
+        emit('switch (');
+        genExpr(node.discriminant);
+        emit(') {\n');
+        const inner = indent + '  ';
+        const bodyIndent = inner + '  ';
+        for (const c of node.cases) {
+          if (c.tests) {
+            c.tests.forEach((t, i) => {
+              emit(inner + 'case '); genExpr(t);
+              emit(i === c.tests.length - 1 ? ': {\n' : ':\n');
+            });
+          } else {
+            emit(inner + 'default: {\n');
+          }
+          c.body.forEach(s => { emit(bodyIndent); genStatement(s, bodyIndent); emit('\n'); });
+          emit(bodyIndent + 'break;\n');
+          emit(inner + '}\n');
+        }
+        emit(indent + '}');
+        break;
+      }
       case 'Break': emit('break;'); break;
       case 'Continue': emit('continue;'); break;
       case 'Print':

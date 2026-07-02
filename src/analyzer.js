@@ -54,7 +54,9 @@ function buildVocabulary() {
   const KW_DOC = {
     'चर': 'let — mutable variable', 'नियत': 'const — constant',
     'कार्य': 'function', 'फलम्': 'return', 'यदि': 'if', 'अन्यथा': 'else',
-    'यावत्': 'while', 'प्रत्येकम्': 'for-of loop', 'भङ्ग': 'break',
+    'यावत्': 'while', 'प्रत्येकम्': 'for-of loop',
+    'विकल्प': 'switch — multi-way branch (no fall-through)',
+    'स्थिति': 'case — a विकल्प branch', 'भङ्ग': 'break',
     'अनुवृत्तम्': 'continue', 'सत्यम्': 'true', 'असत्यम्': 'false',
     'शून्यम्': 'null', 'दर्शय': 'print / console.log', 'कोष': 'object literal',
     'रचय': 'construct a DOM element', 'योजय': 'mount / append',

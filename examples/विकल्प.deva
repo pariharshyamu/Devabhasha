@@ -1,0 +1,30 @@
+# विकल्प.deva — विकल्प (switch/match) and destructuring binds.
+#   node src/cli.js run examples/विकल्प.deva
+
+# विकल्प — each स्थिति (case) is self-contained (implicit break, no
+# fall-through). Comma-separated values share one branch; अन्यथा is default.
+कार्य वारनाम (क) {
+    विकल्प (क) {
+        स्थिति १: फलम् "सोमवासरः"।          # Monday
+        स्थिति २: फलम् "मङ्गलवासरः"।         # Tuesday
+        स्थिति ६, ७: फलम् "सप्ताहान्तः"।     # weekend (6 or 7)
+        अन्यथा: फलम् "अन्यः दिनः"।           # otherwise
+    }
+}
+
+दर्शय(वारनाम(१))।    # सोमवासरः
+दर्शय(वारनाम(७))।    # सप्ताहान्तः
+दर्शय(वारनाम(४))।    # अन्यः दिनः
+
+# destructuring — pull fields straight out of arrays and objects
+नियत [प्रथमम्, द्वितीयम्] = [१०, २०]।
+दर्शय(प्रथमम् + द्वितीयम्)।                    # 30
+
+नियत बिन्दुः = कोष { x: ३, y: ४ }।
+नियत { x, y } = बिन्दुः।                       # shorthand
+दर्शय(x, y)।                                    # 3 4
+
+# key : alias — bind व्यक्ति.नाम to a local called नामधेयम्
+नियत व्यक्तिः = कोष { नाम: "सीता", वयः: २५ }।
+नियत { नाम: नामधेयम्, वयः: आयुः } = व्यक्तिः।
+दर्शय(नामधेयम्, "आयुः", आयुः)।                  # सीता आयुः 25

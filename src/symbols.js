@@ -93,7 +93,15 @@ export function buildSymbols(source) {
     switch (node.type) {
       case 'VarDecl':
         if (node.init) walkExpr(node.init, scope);  // init sees the OUTER scope
-        addBinding(node.name, node.namePos, scope);
+        if (node.pattern) {
+          // destructuring binds each pattern name at its own position
+          if (node.pattern.kind === 'array')
+            node.pattern.names.forEach(n => addBinding(n.name, { line: n.line, col: n.col }, scope));
+          else
+            node.pattern.props.forEach(p => addBinding(p.alias, { line: p.line, col: p.col }, scope));
+        } else {
+          addBinding(node.name, node.namePos, scope);
+        }
         return;
       case 'StateDecl':
         if (node.init) walkExpr(node.init, scope);
@@ -129,6 +137,13 @@ export function buildSymbols(source) {
       case 'While':
         walkExpr(node.test, scope);
         node.body && walkBlock(node.body.body || node.body, makeScope(scope));
+        return;
+      case 'Switch':
+        walkExpr(node.discriminant, scope);
+        (node.cases || []).forEach(c => {
+          (c.tests || []).forEach(t => walkExpr(t, scope));
+          walkBlock(c.body, makeScope(scope));
+        });
         return;
       case 'Export':
         walkStmt(node.decl, scope);

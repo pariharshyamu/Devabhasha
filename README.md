@@ -31,6 +31,7 @@ Open `playground/index.html` in any browser — no server needed.
 | `यदि` / `अन्यथा` | if / otherwise | `if` / `else` |
 | `यावत्` | as long as | `while` |
 | `प्रत्येकम् (x : समूह)` | for each | `for (const x of …)` |
+| `विकल्प` / `स्थिति` | alternative / case | `switch` / `case` (no fall-through) |
 | `भङ्ग` / `अनुवृत्तम्` | break / continue | `break` / `continue` |
 | `सत्यम्` / `असत्यम्` / `शून्यम्` | true / false / void | `true` / `false` / `null` |
 | `दर्शय(…)` | cause to show | `console.log(…)` |
@@ -552,6 +553,47 @@ Convenience operators that desugar to the core language:
 
 These live in the JavaScript-hosted compiler; the self-hosted bootstrap
 sources deliberately don't use them, so the fixpoint is unaffected.
+
+## विकल्प — multi-way branch (switch / match)
+
+`विकल्प` (vikalpa, "alternative") chooses a branch by value. Each `स्थिति`
+(sthiti, "case") is **self-contained — implicit break, no C-style
+fall-through** — so it reads like a `match`. Comma-separated values share a
+branch; `अन्यथा` is the default:
+
+```
+कार्य वारनाम (क) {
+    विकल्प (क) {
+        स्थिति १: फलम् "सोमवासरः"।         # a single case
+        स्थिति ६, ७: फलम् "सप्ताहान्तः"।    # 6 or 7 → one branch
+        अन्यथा: फलम् "अन्यः दिनः"।          # default
+    }
+}
+```
+
+compiles to a JavaScript `switch` where every branch is a block scope with an
+implicit `break` (so `चर`/`नियत` in one case can't leak into another, and
+execution never falls through).
+
+## विभाजन — destructuring
+
+`चर` / `नियत` can bind straight out of an array or object:
+
+```
+नियत [प्रथमम्, द्वितीयम्] = निर्देशाङ्काः।   # const [a, b] = coords
+नियत { नाम, वयः } = व्यक्तिः।                 # const { नाम: …, वयः: … }
+नियत { नाम: नामधेयम् } = व्यक्तिः।            # key : alias — bind under a new name
+```
+
+Array patterns bind positionally; object patterns bind by field name
+(shorthand `{ नाम }` or renamed `{ key: alias }`). Because `कोष` stores keys
+as raw Sanskrit strings, object patterns extract by the raw key and bind the
+transliterated local — so `नियत { नाम } = व` becomes `const { "नाम": naama } = v`.
+
+Both constructs are understood by the semantic pass (destructured names are
+real bindings; each विकल्प branch is its own scope) and, like the sugar above,
+are absent from the bootstrap sources, so the self-hosting fixpoint is
+unaffected.
 
 ## आयात / निर्यात — the module system
 
