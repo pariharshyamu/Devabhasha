@@ -118,6 +118,24 @@ ok('unknown type inside a shape field is flagged',
 ok('bare वस्तु is unconstrained (any object fits)',
    clean('नियत व: वस्तु = कोष{नाम:"र"}। नियत w: { नाम: अक्षर } = व।'));
 
+// ---------- function types (कार्य(params): ret) ----------
+ok('function-type annotation is erased',
+   js('कार्य each(f: कार्य(सङ्ख्या): रिक्त){ f(५)। }') === js('कार्य each(f){ f(५)। }'));
+ok('calling a कार्य-typed param checks its args',
+   has('कार्य each(f: कार्य(सङ्ख्या): रिक्त){ f("x")। }', 'type-arg'));
+ok('calling a कार्य-typed param with the right arg is clean',
+   clean('कार्य each(f: कार्य(सङ्ख्या): रिक्त){ f(५)। }'));
+ok('passing an incompatible function is flagged',
+   has('कार्य लागू(f: कार्य(सङ्ख्या): सङ्ख्या){ फलम् f(१)।} नियत g = कार्य(s: अक्षर): सङ्ख्या { फलम् ५।}। दर्शय(लागू(g))।', 'type-arg'));
+ok('passing a matching function is clean',
+   clean('कार्य लागू(f: कार्य(सङ्ख्या): सङ्ख्या){ फलम् f(१)।} नियत g = कार्य(n: सङ्ख्या): सङ्ख्या { फलम् n।}। दर्शय(लागू(g))।'));
+ok('the return type of a कार्य-typed call flows into a check',
+   has('कार्य ह(f: कार्य(): अक्षर){ कार्य n(x: सङ्ख्या){फलम् x।} दर्शय(n(f()))। }', 'type-arg'));
+ok('unknown type inside a function type is flagged',
+   has('नियत f: कार्य(बकवास): रिक्त = कार्य(x){}।', 'unknown-type'));
+ok('function type composes inside a shape',
+   clean('नियत h: { पठ: कार्य(सङ्ख्या): रिक्त } = कोष { पठ: कार्य(n){ दर्शय(n)।} }।'));
+
 // ---------- integration ----------
 ok('diagnostics() surfaces type warnings',
    diagnostics('चर न: सङ्ख्या = "x"।').some(d => d.kind === 'type-init' && d.severity === 2));

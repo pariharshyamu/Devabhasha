@@ -203,6 +203,21 @@ export function parse(tokens) {
       expect('OP', '}');
       return { shape, line: lb.line, col: lb.col };
     }
+    // function type: कार्य(सङ्ख्या, अक्षर): तथ्य — reuses the कार्य keyword, so
+    // no new operator is needed. The `: ret` is optional (defaults to किमपि).
+    if (check('FUNC')) {
+      const ft = next();
+      expect('OP', '(');
+      const params = [];
+      while (!check('OP', ')') && !check('EOF')) {
+        params.push(parseType());
+        if (check('OP', ',')) next();
+      }
+      expect('OP', ')');
+      let ret = null;
+      if (check('OP', ':')) { next(); ret = parseType(); }
+      return { fn: { params, ret }, line: ft.line, col: ft.col };
+    }
     const t = peek();
     if (t.type !== 'IDENT') {
       throw new DevabhashaError('प्रकारदोषः: expected a type name (e.g. सङ्ख्या, अक्षर)',

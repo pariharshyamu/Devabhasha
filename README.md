@@ -733,6 +733,22 @@ fields, but every field the expected shape names must be present and compatible.
 Shapes nest (`{ प: { x: सङ्ख्या } }`) and compose with arrays (`गण<{ id: सङ्ख्या }>`).
 A bare `वस्तु` carries no known fields, so it stays gradual — any object fits it.
 
+### Function types — `कार्य(सङ्ख्या): तथ्य`
+
+A function type reuses the `कार्य` keyword, so no new syntax is introduced. It
+types callbacks and higher-order functions — calls made *through* a
+function-typed parameter are checked, and passing an incompatible function is
+flagged:
+
+```
+कार्य द्विगुणीकृ (सूचिः: गण<सङ्ख्या>, रूपान्तर: कार्य(सङ्ख्या): सङ्ख्या): गण<सङ्ख्या> {
+    फलम् सूचिः.प्रतिचित्रय(रूपान्तर)।              # रूपान्तर(x) is checked against सङ्ख्या
+}
+```
+
+Function types are compatible on matching arity with compatible parameters and
+return, compose inside shapes and arrays, and (like every annotation) are erased.
+
 ### Type-aware hover
 
 Hovering an annotated binding — or any reference to one — reports its declared
@@ -1251,11 +1267,12 @@ checker).
 
 Open directions from here:
 
-1. **Deeper types** — element-typed arrays (`गण<सङ्ख्या>`), **object shapes**
-   (`{ नाम: अक्षर }`, structural with width subtyping and field-type flow), and
-   **type-aware hover** are **now in place**. Still open: first-class function
-   types in the checker (hover already shows a function's signature) and
-   type-narrowing from `विकल्प` patterns.
+1. **Deeper types** — **now in place**: element-typed arrays (`गण<सङ्ख्या>`),
+   **object shapes** (`{ नाम: अक्षर }`, structural with width subtyping and
+   field-type flow), **function types** (`कार्य(सङ्ख्या): तथ्य`, checked through
+   higher-order calls), and **type-aware hover**. A natural next step is
+   type-narrowing from `विकल्प` patterns (a matched `कोष { प्रकार: "If" }` could
+   refine the branch's type).
 2. **Vibhakti breadth** — the oblique cases of the इ/ई/उ vowel-final stems (the
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending

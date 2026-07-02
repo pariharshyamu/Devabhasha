@@ -45,6 +45,8 @@ const elemOf = t => (t && t.base === 'गण') ? t.elem : ANY;
 // वस्तु carries no known fields (fieldsOf → null → structurally unconstrained).
 const isObj = t => t === 'वस्तु' || !!(t && t.base === 'वस्तु');
 const fieldsOf = t => (t && t.base === 'वस्तु') ? t.fields : null;
+// A function type: { base:'कार्य', params:[type], ret:type }.
+const isFn = t => !!(t && t.base === 'कार्य');
 
 // Structural identity — used to decide an array literal's element type.
 function sameType(a, b) {
@@ -53,18 +55,23 @@ function sameType(a, b) {
     const ka = Object.keys(a.fields), kb = Object.keys(b.fields);
     return ka.length === kb.length && ka.every(k => k in b.fields && sameType(a.fields[k], b.fields[k]));
   }
+  if (isFn(a) && isFn(b))
+    return a.params.length === b.params.length &&
+      a.params.every((p, i) => sameType(p, b.params[i])) && sameType(a.ret, b.ret);
   return a === b;
 }
 
-// Human-readable rendering: गण<सङ्ख्या>, { नाम: अक्षर }, and their glosses.
+// Human-readable rendering: गण<सङ्ख्या>, { नाम: अक्षर }, कार्य(सङ्ख्या): तथ्य.
 function typeName(t) {
   if (t && t.base === 'गण') return `गण<${typeName(t.elem)}>`;
   if (t && t.base === 'वस्तु') return `{ ${Object.entries(t.fields).map(([k, v]) => `${k}: ${typeName(v)}`).join(', ')} }`;
+  if (isFn(t)) return `कार्य(${t.params.map(typeName).join(', ')}): ${typeName(t.ret)}`;
   return t;
 }
 function typeGloss(t) {
   if (t && t.base === 'गण') return `array of ${typeGloss(t.elem)}`;
   if (t && t.base === 'वस्तु') return 'object';
+  if (isFn(t)) return 'function';
   return EN[t] || '?';
 }
 const show = t => `${typeName(t)} (${typeGloss(t)})`;
@@ -81,6 +88,8 @@ function annType(ann) {
     for (const f of ann.shape) fields[f.key] = annType(f.type);
     return { base: 'वस्तु', fields };
   }
+  if (ann.fn)        // function type कार्य(params): ret
+    return { base: 'कार्य', params: ann.fn.params.map(annType), ret: ann.fn.ret ? annType(ann.fn.ret) : ANY };
   if (!BASE_TYPES.has(ann.name)) return ANY;
   if (ann.name === 'गण' && ann.params && ann.params.length)
     return { base: 'गण', elem: annType(ann.params[0]) };
@@ -101,6 +110,11 @@ function compatible(expected, actual) {
     if (!want || !got) return true;      // a bare वस्तु is unconstrained
     return Object.keys(want).every(k => k in got && compatible(want[k], got[k]));
   }
+  if (isFn(expected) && isFn(actual)) {  // same arity, params + return compatible
+    return expected.params.length === actual.params.length &&
+      expected.params.every((p, i) => compatible(p, actual.params[i])) &&
+      compatible(expected.ret, actual.ret);
+  }
   return expected === actual;
 }
 
@@ -119,6 +133,7 @@ export function typeDiagnostics(source) {
   const checkTypeName = ann => {
     if (!ann) return;
     if (ann.shape) { ann.shape.forEach(f => checkTypeName(f.type)); return; }
+    if (ann.fn) { ann.fn.params.forEach(checkTypeName); checkTypeName(ann.fn.ret); return; }
     if (!BASE_TYPES.has(ann.name))
       warn(ann, `अज्ञातप्रकारः (unknown type '${ann.name}')`, 'unknown-type');
     else if (ann.params && ann.params.length && !PARAMETRIC.has(ann.name))
@@ -187,13 +202,20 @@ export function typeDiagnostics(source) {
       }
       case 'Null': return ANY;
       case 'Identifier': return getVar(scope, node.name);
+      case 'FuncExpr': {
+        // a function expression's own type, from its annotations (body-return
+        // inference stays gradual — an unannotated return is किमपि).
+        const params = (node.paramTypes || node.params.map(() => null)).map(annType);
+        return { base: 'कार्य', params, ret: node.returnType ? annType(node.returnType) : ANY };
+      }
       case 'Call': {
         const c = node.callee;
         if (c && c.type === 'Identifier' && sigs.has(c.name)) {
           const rt = sigs.get(c.name).returnType;
           return rt == null ? ANY : rt;
         }
-        return ANY;
+        const ct = infer(c, scope);         // a function-typed value → its ret
+        return isFn(ct) ? ct.ret : ANY;
       }
       case 'Unary': return node.op === '!' ? 'तथ्य' : node.op === '-' ? 'सङ्ख्या' : ANY;
       case 'Binary': {
@@ -328,8 +350,13 @@ export function typeDiagnostics(source) {
 
   function checkCall(node, scope) {
     const c = node.callee;
-    if (!c || c.type !== 'Identifier' || !sigs.has(c.name)) return;
-    const { paramTypes } = sigs.get(c.name);
+    // A callee's parameter types come from a hoisted signature (named function),
+    // or from an inferred function TYPE (a कार्य-typed variable/parameter).
+    let paramTypes = null, name = null;
+    if (c && c.type === 'Identifier' && sigs.has(c.name)) { paramTypes = sigs.get(c.name).paramTypes; name = c.name; }
+    else { const ct = infer(c, scope); if (isFn(ct)) { paramTypes = ct.params; name = c && c.name; } }
+    if (!paramTypes) return;
+    const label = name ? `'${name}'` : 'the function';
     const args = node.args || [];
     for (let i = 0; i < Math.min(args.length, paramTypes.length); i++) {
       const want = paramTypes[i];
@@ -337,9 +364,9 @@ export function typeDiagnostics(source) {
       const got = infer(args[i], scope);
       if (!compatible(want, got)) {
         // literal args carry no position; fall back to the callee's.
-        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : c;
+        const pos = args[i].line != null ? { line: args[i].line, col: args[i].col } : (c && c.line != null ? c : node);
         warn(pos,
-          `प्रकारभेदः (argument ${i + 1} of '${c.name}' expects ${show(want)}, got ${show(got)})`,
+          `प्रकारभेदः (argument ${i + 1} of ${label} expects ${show(want)}, got ${show(got)})`,
           'type-arg');
       }
     }
