@@ -1,0 +1,53 @@
+# जालमध्यगाः.deva — web middlewares for मार्गकः: स्थैतिक (static files) and
+# कोर्स (CORS). Both rely on the router running middleware on EVERY request and
+# short-circuiting when a middleware responds without calling अग्रे().
+
+# content type by file extension (text assets; binary → octet-stream)
+कार्य विषयप्रकारः (पथ) {
+    यदि (पथ.समाप्यते(".html")) { फलम् "text/html; charset=utf-8"। }
+    यदि (पथ.समाप्यते(".css"))  { फलम् "text/css; charset=utf-8"। }
+    यदि (पथ.समाप्यते(".js"))   { फलम् "text/javascript; charset=utf-8"। }
+    यदि (पथ.समाप्यते(".json")) { फलम् "application/json; charset=utf-8"। }
+    यदि (पथ.समाप्यते(".svg"))  { फलम् "image/svg+xml"। }
+    यदि (पथ.समाप्यते(".txt"))  { फलम् "text/plain; charset=utf-8"। }
+    फलम् "application/octet-stream"।
+}
+
+# स्थैतिक(मूलम्) — serve a TEXT asset under मूलम् for a GET whose path maps to a
+# readable file; otherwise pass through (अग्रे) to the routes. "/" → index.html.
+# (Reads are UTF-8 via सञ्चिका, so this is for text assets — html/css/js/svg/…)
+निर्यात कार्य स्थैतिक (मूलम्) {
+    फलम् असमकालिक कार्य (अ, प्र, अग्रे) {
+        यदि (अ.रीतिः != "GET") { प्रतीक्षा अग्रे()। फलम्। }
+        चर पथ = अ.मार्गः।
+        यदि (पथ == "/") { पथ = "/index.html"। }
+        यदि (पथ.अस्ति("..")) { प्रतीक्षा अग्रे()। फलम्। }   # path-traversal guard
+        नियत फल = प्रतीक्षा सञ्चिका.पठ(मूलम् + पथ)।
+        यदि (फल.सफल) {
+            प्र.शीर्षम्("Content-Type", विषयप्रकारः(पथ))।
+            प्र.लेखय(फल.मूल्यम्)।
+        } अन्यथा {
+            प्रतीक्षा अग्रे()।
+        }
+    }।
+}
+
+# कोर्स(विकल्पाः?) — set CORS headers on every response, and answer an OPTIONS
+# preflight with 204 immediately. Options (all optional): उद्गमः (Origin,
+# default "*"), रीतयः (Methods), शीर्षाणि (Headers).
+निर्यात कार्य कोर्स (विकल्पाः) {
+    नियत वि = विकल्पाः अथवा कोष{}।
+    नियत उद्गमः = वि.उद्गमः अथवा "*"।
+    नियत रीतयः = वि.रीतयः अथवा "GET,POST,PUT,DELETE,OPTIONS"।
+    नियत अनुशीर्षाणि = वि.शीर्षाणि अथवा "Content-Type,Authorization"।
+    फलम् असमकालिक कार्य (अ, प्र, अग्रे) {
+        प्र.शीर्षम्("Access-Control-Allow-Origin", उद्गमः)।
+        प्र.शीर्षम्("Access-Control-Allow-Methods", रीतयः)।
+        प्र.शीर्षम्("Access-Control-Allow-Headers", अनुशीर्षाणि)।
+        यदि (अ.रीतिः == "OPTIONS") {
+            प्र.स्थिति(२०४).लेखय("")।
+        } अन्यथा {
+            प्रतीक्षा अग्रे()।
+        }
+    }।
+}
