@@ -37,14 +37,15 @@ const norm = n => Array.isArray(n) ? n.map(norm)
       ? Object.fromEntries(Object.entries(n).map(([k, v]) => [FIELD[k] || k, norm(v)]))
       : n);
 const clean = n => JSON.parse(JSON.stringify(n));
-// strip source-position metadata (line/col) and a falsy `async` flag: the JS
-// parser adds these for source maps / async support, but they aren't
-// structural AST the self-hosted parser needs to reproduce.
+// strip source-position metadata (line/col), a falsy `async` flag, and the
+// erasable प्रकार type annotations (varType/returnType/paramTypes): the JS
+// parser adds these for source maps / async / the gradual type layer, but they
+// aren't structural AST the self-hosted parser needs to reproduce.
+const META = new Set(['line', 'col', 'namePos', 'paramPos', 'varType', 'returnType', 'paramTypes']);
 const stripPos = n => Array.isArray(n) ? n.map(stripPos)
   : (n && typeof n === 'object'
       ? Object.fromEntries(Object.entries(n)
-          .filter(([k, v]) => k !== 'line' && k !== 'col' && k !== 'namePos'
-                           && k !== 'paramPos' && !(k === 'async' && !v))
+          .filter(([k, v]) => !META.has(k) && !(k === 'async' && !v))
           .map(([k, v]) => [k, stripPos(v)]))
       : n);
 
