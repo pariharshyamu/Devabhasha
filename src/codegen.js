@@ -530,47 +530,62 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
   const switchHasPattern = node =>
     node.cases.some(c => (c.tests || []).some(isMatchPattern));
 
-  // Emit the boolean test for one स्थिति test against the discriminant temp.
-  // A value test is a === comparison; a pattern is a shape test.
-  function emitMatchTest(t, disc) {
+  // Emit the boolean shape-test for one स्थिति test against `access` (a JS
+  // expression string for the value being matched — the discriminant temp at
+  // top level, or an element/field accessor when recursing into a nested
+  // pattern). A plain value test is a === comparison.
+  function emitMatchTest(t, access) {
     if (t.type === 'MatchObject') {
-      emit(`(${disc} != null && typeof ${disc} === "object"`);
+      emit(`(${access} != null && typeof ${access} === "object"`);
       for (const p of t.props) {
-        if (p.value != null) { emit(` && ${disc}[${JSON.stringify(p.key)}] === `); genExpr(p.value); }
-        else emit(` && ${JSON.stringify(p.key)} in ${disc}`);   // a binding requires the key
+        const field = `${access}[${JSON.stringify(p.key)}]`;
+        if (p.kind === 'const') { emit(` && ${field} === `); genExpr(p.value); }
+        else if (p.kind === 'nested') { emit(' && '); emitMatchTest(p.sub, field); }
+        else emit(` && ${JSON.stringify(p.key)} in ${access}`);   // a binding requires the key
       }
       emit(')');
     } else if (t.type === 'MatchArray') {
-      emit(`(Array.isArray(${disc}) && ${disc}.length === ${t.elements.length}`);
+      const cmp = t.rest ? '>=' : '===';
+      emit(`(Array.isArray(${access}) && ${access}.length ${cmp} ${t.elements.length}`);
       t.elements.forEach((e, i) => {
-        if (e.value != null) { emit(` && ${disc}[${i}] === `); genExpr(e.value); }
+        const at = `${access}[${i}]`;
+        if (e.kind === 'const') { emit(` && ${at} === `); genExpr(e.value); }
+        else if (e.kind === 'nested') { emit(' && '); emitMatchTest(e.sub, at); }
       });
       emit(')');
     } else {
-      emit(`${disc} === `); genExpr(t);
+      emit(`${access} === `); genExpr(t);
     }
   }
 
-  // Emit `const <name> = <access>;` for every binding introduced by the case's
-  // patterns (deduped — a name bound by more than one alternative is declared
-  // once). Object bindings read by key, array bindings by index.
-  function emitMatchBinds(tests, disc, bodyIndent) {
-    const seen = new Set();
-    for (const t of tests) {
-      if (t.type === 'MatchObject') {
-        for (const p of t.props) if (p.bind && !seen.has(p.bind)) {
-          seen.add(p.bind);
-          emit(`${bodyIndent}const ${id(p.bind)} = ${disc}[${JSON.stringify(p.key)}];\n`);
-        }
-      } else if (t.type === 'MatchArray') {
-        t.elements.forEach((e, i) => {
-          if (e.bind && !seen.has(e.bind)) {
-            seen.add(e.bind);
-            emit(`${bodyIndent}const ${id(e.bind)} = ${disc}[${i}];\n`);
-          }
-        });
+  // Emit `const <name> = <access>;` for every binding a pattern introduces,
+  // recursing into nested patterns and honouring an array rest (a .slice of the
+  // tail). `seen` dedupes names bound by more than one alternative in a case.
+  function emitPatternBinds(pat, access, bodyIndent, seen) {
+    if (pat.type === 'MatchObject') {
+      for (const p of pat.props) {
+        const field = `${access}[${JSON.stringify(p.key)}]`;
+        if (p.kind === 'bind' && !seen.has(p.name)) {
+          seen.add(p.name); emit(`${bodyIndent}const ${id(p.name)} = ${field};\n`);
+        } else if (p.kind === 'nested') emitPatternBinds(p.sub, field, bodyIndent, seen);
+      }
+    } else if (pat.type === 'MatchArray') {
+      pat.elements.forEach((e, i) => {
+        const at = `${access}[${i}]`;
+        if (e.kind === 'bind' && !seen.has(e.name)) {
+          seen.add(e.name); emit(`${bodyIndent}const ${id(e.name)} = ${at};\n`);
+        } else if (e.kind === 'nested') emitPatternBinds(e.sub, at, bodyIndent, seen);
+      });
+      if (pat.rest && !seen.has(pat.rest.name)) {
+        seen.add(pat.rest.name);
+        emit(`${bodyIndent}const ${id(pat.rest.name)} = ${access}.slice(${pat.elements.length});\n`);
       }
     }
+  }
+
+  function emitMatchBinds(tests, disc, bodyIndent) {
+    const seen = new Set();
+    for (const t of tests) if (isMatchPattern(t)) emitPatternBinds(t, disc, bodyIndent, seen);
   }
 
   // Compile a pattern-bearing विकल्प to an if/else-if chain. The discriminant is

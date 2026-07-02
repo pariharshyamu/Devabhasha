@@ -295,11 +295,23 @@ export function parse(tokens) {
     return parseExpression();
   }
 
-  // कोष { प्रकार: "If", देहः }  — an object pattern. Each field is either a
-  // CONSTRAINT (`key: value` → the discriminant's key must === value, usually a
-  // literal) or a BINDING (bare `key` → bind key = discriminant[key] in the
-  // branch). Matches when the discriminant is a non-null object satisfying every
-  // constraint and carrying every bound key.
+  // A sub-pattern in value position (after a `:` in an object, or as an array
+  // element). कोष / [ recurse into a nested pattern; a bare identifier is a
+  // BINDING; anything else is a CONSTRAINT expression (the value must ===).
+  //   कोष { प्रकार: "If" }        प्रकार must === "If"       (const)
+  //   कोष { देहः }                 bind देहः = disc.देहः      (bind, shorthand)
+  //   कोष { मूलम्: नाम }           bind नाम = disc.मूलम्      (bind, aliased)
+  //   कोष { स्थानम्: कोष { x: ० }} nested object pattern      (nested)
+  function classifyValue(kind) {
+    if (check('OBJECT') || check('OP', '[')) return { kind: 'nested', sub: parseCaseTest() };
+    const t = peek();
+    if (t.type === 'IDENT') { next(); return { kind: 'bind', name: t.value, line: t.line, col: t.col }; }
+    return { kind: 'const', value: parseExpression() };
+  }
+
+  // कोष { प्रकार: "If", देहः, मूलम्: नाम, स्थानम्: कोष { … } } — an object
+  // pattern with constraints, shorthand/aliased bindings, and nested patterns.
+  // Matches a non-null object satisfying every constraint and carrying every key.
   function parseMatchObject() {
     const kt = next(); // OBJECT
     expect('OP', '{');
@@ -311,30 +323,38 @@ export function parse(tokens) {
           { line: t.line, col: t.col, kind: 'parse' });
       next();
       const key = t.value;
-      let value = null, bind = null;
-      if (check('OP', ':')) { next(); value = parseExpression(); }  // constraint
-      else bind = key;                                              // shorthand binding
-      props.push({ key, value, bind, line: t.line, col: t.col });
+      let prop;
+      if (check('OP', ':')) { next(); prop = { key, ...classifyValue(), line: t.line, col: t.col }; }
+      else prop = { key, kind: 'bind', name: key, line: t.line, col: t.col };   // shorthand
+      // shorthand/aliased bind position: prefer the binding-name token if present
+      if (prop.kind === 'bind' && prop.name === key) { prop.line = t.line; prop.col = t.col; }
+      props.push(prop);
       if (check('OP', ',')) next();
     }
     expect('OP', '}');
     return { type: 'MatchObject', props, line: kt.line, col: kt.col };
   }
 
-  // [ अ, ब, ० ]  — an array pattern: exact-length positional match. Each element
-  // is a BINDING (an identifier → bind element) or a CONSTRAINT (a literal → the
-  // element must ===). Matches an array of exactly this length.
+  // [ अ, ब, ०, ...शेषम् ] — an array pattern. Each element is a BINDING
+  // (identifier), a CONSTRAINT (literal), or a nested pattern; an optional
+  // trailing `...name` binds the remaining elements. Without a rest the length
+  // must match exactly; with one it must be at least the fixed count.
   function parseMatchArray() {
     const lb = expect('OP', '[');
     const elements = [];
+    let rest = null;
     while (!check('OP', ']') && !check('EOF')) {
-      const t = peek();
-      if (t.type === 'IDENT') { next(); elements.push({ bind: t.value, value: null, line: t.line, col: t.col }); }
-      else elements.push({ bind: null, value: parseExpression(), line: t.line, col: t.col });
+      if (check('OP', '...')) {
+        next();
+        const rt = expect('IDENT');
+        rest = { name: rt.value, line: rt.line, col: rt.col };
+        break;                       // rest must be the final element
+      }
+      elements.push(classifyValue());
       if (check('OP', ',')) next();
     }
     expect('OP', ']');
-    return { type: 'MatchArray', elements, line: lb.line, col: lb.col };
+    return { type: 'MatchArray', elements, rest, line: lb.line, col: lb.col };
   }
 
   // प्रत्येकम् (वस्तु : समूह) { ... }  → for (const वस्तु of समूह)

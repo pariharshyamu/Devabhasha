@@ -12,6 +12,7 @@
 
 import { tokenize } from './lexer.js';
 import { parse } from './parser.js';
+import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
 
 // A Scope maps a name → binding record. Bindings live in the scope where the
 // declaration appears; lookups walk outward to enclosing scopes.
@@ -145,10 +146,9 @@ export function buildSymbols(source) {
           for (const t of (c.tests || [])) {
             // a pattern binds names (at their own positions) and constrains
             // with value expressions; a plain value test is just an expression.
-            if (t.type === 'MatchObject') {
-              for (const p of t.props) { p.value && walkExpr(p.value, scope); p.bind && addBinding(p.bind, { line: p.line, col: p.col }, cscope); }
-            } else if (t.type === 'MatchArray') {
-              for (const e of t.elements) { e.value && walkExpr(e.value, scope); e.bind && addBinding(e.bind, { line: e.line, col: e.col }, cscope); }
+            if (isMatchPattern(t)) {
+              patternConstraints(t).forEach(e => walkExpr(e, scope));
+              patternBindings(t).forEach(b => addBinding(b.name, { line: b.line, col: b.col }, cscope));
             } else {
               walkExpr(t, scope);
             }

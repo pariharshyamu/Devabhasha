@@ -616,6 +616,18 @@ usually a literal); a **bare** `key` (or a positional array identifier) is a
 }
 ```
 
+Patterns compose three more ways:
+
+```
+स्थिति कोष { मूलम्: शीर्षकम् }:              # aliased binding — bind मूलम् as शीर्षकम्
+स्थिति कोष { स्थानम्: कोष { x: ० } }:        # nested pattern — स्थानम् must itself match
+स्थिति [प्रथम, ...शेषम्]:                     # array rest — bind the head, collect the tail
+```
+
+An identifier after `key:` binds (under that name); a `कोष`/`[` nests; anything
+else is a constraint. `...name` binds the remaining array elements (a `.slice`),
+relaxing the length test from `===` to `>=`.
+
 The moment any `स्थिति` uses a pattern, the whole `विकल्प` lowers to an
 `if / else if` chain instead of a `switch`: the discriminant is evaluated once
 into a block-scoped temp, object patterns test `typeof`/key presence/constraints
@@ -1223,10 +1235,10 @@ Open directions from here:
 3. **वचन semantics for द्विवचन** — **now in place**: a dual कर्तृ builds a pair
    (a group of exactly two, count-checked with a वचनभेदः diagnostic), matching
    the बहुवचन group semantic.
-4. **Pattern matching** — **now in place**: `विकल्प` accepts structural object
-   and array patterns (`स्थिति कोष { प्रकार: "If", देहः }: …`) with constraints
-   and bindings, lowering to an if-chain (see *Pattern matching* above). Still
-   open: nested patterns, key-aliased bindings, and array rest (`…`).
+4. **Pattern matching** — **done**: `विकल्प` accepts structural object and array
+   patterns (`स्थिति कोष { प्रकार: "If", देहः }: …`) with constraints, shorthand
+   and aliased bindings, nested patterns, and array rest (`...शेषम्`), lowering
+   to an if-chain (see *Pattern matching* above).
 
 ## License
 

@@ -22,6 +22,7 @@ import { parse } from './parser.js';
 import { GLOBALS } from './stdlib.js';
 import { STYLE_VALUES } from './style.js';
 import { KARAKA_NAME_SA } from './vibhakti.js';
+import { isMatchPattern, patternBindings, patternConstraints } from './patterns.js';
 
 const KNOWN_GLOBALS = new Set(Object.keys(GLOBALS));
 const STYLE_WORDS = new Set(Object.keys(STYLE_VALUES));
@@ -143,10 +144,9 @@ export function semanticDiagnostics(source) {
           for (const t of (c.tests || [])) {
             // a pattern binds names into the branch and constrains with value
             // expressions; a plain value test is just an expression.
-            if (t.type === 'MatchObject') {
-              for (const p of t.props) { p.value && walkExpr(p.value, scope); p.bind && declare(cscope, p.bind); }
-            } else if (t.type === 'MatchArray') {
-              for (const e of t.elements) { e.value && walkExpr(e.value, scope); e.bind && declare(cscope, e.bind); }
+            if (isMatchPattern(t)) {
+              patternConstraints(t).forEach(e => walkExpr(e, scope));
+              patternBindings(t).forEach(b => declare(cscope, b.name));
             } else {
               walkExpr(t, scope);
             }

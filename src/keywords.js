@@ -55,7 +55,7 @@ export const TOKEN_TO_WORD = Object.fromEntries(
 // Multi-character operators must be listed longest-first so the lexer
 // matches '==' before '=', '+=' before '+', etc.
 export const OPERATORS = [
-  '===', '!==', '??',
+  '===', '!==', '??', '...',
   '==', '!=', '<=', '>=', '&&', '||',
   '+=', '-=', '*=', '/=', '%=', '++', '--',
   '+', '-', '*', '/', '%', '=', '<', '>', '!', '?',
