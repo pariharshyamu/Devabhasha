@@ -82,6 +82,21 @@ if (JSDOM) {
     ok('empty plural → empty group (no elements)',
        body.querySelectorAll('button').length === 0);
   }
+  {
+    // द्विवचन (dual): a pair builds exactly two elements, one per child —
+    // like a plural, but the grammar means "two".
+    const body = run('योजय(रचय पटौ { "हाँ" "नहीं" })।');
+    const btns = body.querySelectorAll('button');
+    ok('dual pair → exactly two <button>', btns.length === 2);
+    ok('dual pair children in order',
+       btns[0].textContent === 'हाँ' && btns[1].textContent === 'नहीं');
+  }
+  {
+    const body = run('योजय(रचय सूचीः { रचय पङ्क्ती { "प्रथमा" "द्वितीया" } })।');
+    const ul = body.querySelector('ul');
+    ok('vowel-final dual पङ्क्ती → ul wraps 2 li',
+       ul && ul.querySelectorAll('li').length === 2);
+  }
 } else {
   console.log('  · jsdom not installed — behavioral checks skipped');
 }

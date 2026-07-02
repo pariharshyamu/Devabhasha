@@ -716,6 +716,7 @@ export function parse(tokens) {
     const slots = {};   // slotName -> AST/value
     const order = [];   // record kāraka order purely for diagnostics
     let plural = false;  // बहुवचन on the कर्तृ (tag) → an element GROUP
+    let dual = false;    // द्विवचन on the कर्तृ (tag) → a PAIR (a group of two)
 
     while (true) {
       const tok = peek();
@@ -731,8 +732,11 @@ export function parse(tokens) {
       // वचन agreement: a plural कर्तृ (nominative tag, e.g. पटाः "buttons")
       // means the element distributes over the समास children — one element
       // per child. The role is number-invariant; only the tag's number
-      // switches single-element vs. group construction.
+      // switches single-element vs. group construction. A द्विवचन कर्तृ (e.g.
+      // पटौ "two buttons") is a PAIR — a group the grammar expects to hold
+      // exactly two children (checked in semantic analysis).
       if (a.karaka === KARAKA.KARTR && a.number === VACANA.BAHU) plural = true;
+      if (a.karaka === KARAKA.KARTR && a.number === VACANA.DVI) dual = true;
 
       if (slot === 'tag' && TAG_STEMS[a.stem]) {
         slots.tag = { type: 'String', value: TAG_STEMS[a.stem] };
@@ -785,7 +789,7 @@ export function parse(tokens) {
       expect('OP', '}');
     }
 
-    return { type: 'Construct', slots, order, children, style, plural };
+    return { type: 'Construct', slots, order, children, style, plural, dual };
   }
 
   // कोष { कुञ्जी: मूल्यम्, अन्या: मूल्यम् }  →  object literal

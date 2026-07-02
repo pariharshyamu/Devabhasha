@@ -98,7 +98,7 @@ which वचन you wrote:
 on hover for any inflected form of the construction vocabulary (`पटैः` hovers
 as *instrumental plural, `<button>` element*).
 
-#### बहुवचन → element groups
+#### बहुवचन / द्विवचन → element groups
 
 Number is not just recorded — a **plural कर्तृ (nominative tag) builds a group**.
 The tag *distributes* over the समास children: one element per child, each child
@@ -137,6 +137,18 @@ Here `पङ्क्ति` (इकारान्त, li) pluralizes to `प�
 to `सूच्यः`, `सेतु` (उकारान्त, a) to `सेतवः`. For *data-driven* lists (items
 from state) use the reactive `सूची-दत्तांश` / `.प्रतिचित्रय` map rendering;
 plural groups are the concise form for *static* homogeneous element groups.
+
+A **द्विवचन कर्तृ is a PAIR** — the same group builder, but the grammar means
+*exactly two*. It distributes over its two समास children like a plural:
+
+```
+रचय पटौ { "हाँ" "नहीं" }   →   <button>हाँ</button><button>नहीं</button>
+```
+
+Because the dual asserts two-ness, the semantic pass emits a **वचनभेदः**
+warning if the pair doesn't hold exactly two children (`रचय पटौ { "a" "b" "c" }`
+→ *expected two समास children, got 3*). Plural (`पटाः`) is a group of any size
+and is never count-checked; only the singular (`पटः`) builds a lone element.
 
 **Scope (honest):** beyond the generic अकारान्त-style role markers (which the
 append-a-marker convention lets serve *every* stem for the common cases), the
@@ -1168,7 +1180,8 @@ Much of the original roadmap is now in place: **source maps** (`--sourcemap`),
 a **समास element syntax** (block-form `रचय` trees), **type annotations**
 (`प्रकार`, above), **editor support** (TextMate grammar + VS Code extension +
 LSP), and **Sanskrit diagnostics** (a full semantic pass — undefined names,
-unreachable code, arity, duplicate कारक — plus the gradual type checker).
+unreachable code, arity, duplicate कारक, वचन agreement — plus the gradual type
+checker).
 
 Open directions from here:
 
@@ -1179,8 +1192,9 @@ Open directions from here:
    नदी / मति / शत्रु paradigms) are **now in place**. Still open: further stem
    classes (ऋकारान्त, consonant-final) and gendered variants, extending
    `vibhakti.js` (`PARADIGM_TABLE` / `VOWEL_STEMS` / `NOMINAL_DECLENSION`).
-3. **वचन semantics for द्विवचन** — the dual currently parses but builds a single
-   element; a "pair" construction could give it meaning to match बहुवचन groups.
+3. **वचन semantics for द्विवचन** — **now in place**: a dual कर्तृ builds a pair
+   (a group of exactly two, count-checked with a वचनभेदः diagnostic), matching
+   the बहुवचन group semantic.
 4. **Pattern matching** — extend `विकल्प` beyond value equality to destructuring
    patterns (`स्थिति कोष { प्रकार: "If" }: …`).
 

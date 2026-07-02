@@ -200,6 +200,19 @@ export function semanticDiagnostics(source) {
             firstBySlot.set(o.slot, o);
           }
         }
+        // वचन agreement: a द्विवचन कर्तृ (पटौ "two buttons") is a PAIR — it
+        // distributes over exactly two समास children, one element each. Any
+        // other count contradicts the dual. (बहुवचन is a group of any size, so
+        // it is not checked.) Anchored at the कर्तृ so the fix is obvious.
+        if (node.dual) {
+          const n = (node.children || []).length;
+          if (n !== 2) {
+            const kartr = (node.order || []).find(o => o.slot === 'tag');
+            warn(kartr && { line: kartr.line, col: kartr.col },
+              `वचनभेदः (द्विवचन '${kartr ? kartr.word : ''}' is a pair — expected two समास children, got ${n})`,
+              'vacana-agreement');
+          }
+        }
         // walk the value expressions so undefined names inside a रचय are caught
         for (const k of Object.keys(node.slots || {})) walkExpr(node.slots[k], scope);
         if (node.style) {

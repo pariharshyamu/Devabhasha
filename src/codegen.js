@@ -732,10 +732,12 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
       case 'Construct': {
         // Assemble from role slots; order in source is irrelevant.
         const s = node.slots;
-        // बहुवचन कर्तृ → constructGroup: the tag distributes over the समास
-        // children (one element per child), sharing the other kāraka slots.
-        // Returns an array of nodes. Same slot syntax, different builder.
-        emit(node.plural ? '__DB.constructGroup({ tag: ' : '__DB.construct({ tag: ');
+        // बहुवचन / द्विवचन कर्तृ → constructGroup: the tag distributes over the
+        // समास children (one element per child), sharing the other kāraka slots.
+        // Returns an array of nodes. A द्विवचन (dual) is the same group builder —
+        // the grammar asserts a pair (checked in semantic analysis); a बहुवचन is
+        // any number. Same slot syntax, different builder.
+        emit((node.plural || node.dual) ? '__DB.constructGroup({ tag: ' : '__DB.construct({ tag: ');
         genExpr(s.tag);
         if (s.content) {
           if (!inView && readsState(s.content)) {
