@@ -10,7 +10,7 @@ Devanagari; output is readable JavaScript.
 }                             }
 ```
 
-### 📖 Documentation & tutorials → **<https://pariharshyamu.github.io/devabhasha/>**
+### 📖 Documentation & tutorials → **<https://pariharshyamu.github.io/Devabhasha/>**
 
 A full documentation site lives in [`docs/`](docs/) and is published to GitHub
 Pages: a [language guide](docs/guide.html), step-by-step
