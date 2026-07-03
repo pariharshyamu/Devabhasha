@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language Guide · Devabhāṣā</title>
+<meta name="description" content="The Devabhāṣā language guide: syntax, data, control flow, types, modules, async, and the Result error model.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html"><span class="deva">देवभाषा</span><span class="latin">Devabhāṣā</span></a>
+    <nav class="nav">
+      <button class="icon-btn menu-btn" data-action="menu" aria-label="Menu">☰</button>
+      <a href="guide.html" class="active">Guide</a>
+      <a href="tutorial.html">Tutorials</a>
+      <a href="stdlib.html">Standard Library</a>
+      <a href="backend.html">Backend &amp; Full-stack</a>
+      <a class="hide-sm" href="https://github.com/pariharshyamu/devabhasha">GitHub ↗</a>
+      <button class="icon-btn" data-action="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>Language Guide</h4>
+    <a href="#intro">How it works</a>
+    <a href="#basics">Variables &amp; functions</a>
+    <a href="#control">Control flow</a>
+    <a href="#data">Objects, arrays, strings</a>
+    <a href="#sugar">Operators &amp; sugar</a>
+    <a href="#match">Branch &amp; pattern match</a>
+    <a href="#destructure">Destructuring</a>
+    <a href="#types">Gradual types</a>
+    <a href="#modules">Modules</a>
+    <a href="#async">Async &amp; await</a>
+    <a href="#result">The Result model</a>
+  </aside>
+
+  <main>
+  <div class="content">
+  <h1>Language Guide</h1>
+  <p class="lead">Devabhāṣā source is written in Devanagari and compiles to readable JavaScript.
+  Statements end with a <strong>danda</strong> <code>।</code> (or <code>;</code>), comments begin with
+  <code>#</code>, and numbers may be Devanagari (<code>०१२…</code>) or ASCII.</p>
+
+  <h2 id="intro">How it works</h2>
+  <p>The pipeline is a classic three stages — <strong>lexer → parser → codegen</strong> — plus a keyword
+  layer that is the only Sanskrit-aware part. Identifiers you write in Devanagari are transliterated to
+  stable ASCII in the output (<code>गणना</code> → <code>gannanaa</code>), so the emitted JavaScript is
+  portable and debuggable. Nothing is interpreted at runtime — Devabhāṣā is a pure transpiler.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>Meaning</th><th>Compiles to</th></tr></thead>
+    <tbody>
+      <tr><td><code>चर</code> / <code>नियत</code></td><td>varies / fixed</td><td><code>let</code> / <code>const</code></td></tr>
+      <tr><td><code>कार्य</code></td><td>work to be done</td><td><code>function</code></td></tr>
+      <tr><td><code>फलम्</code></td><td>fruit / result</td><td><code>return</code></td></tr>
+      <tr><td><code>यदि</code> / <code>अन्यथा</code></td><td>if / otherwise</td><td><code>if</code> / <code>else</code></td></tr>
+      <tr><td><code>यावत्</code></td><td>as long as</td><td><code>while</code></td></tr>
+      <tr><td><code>प्रत्येकम् (x : समूह)</code></td><td>for each</td><td><code>for (const x of …)</code></td></tr>
+      <tr><td><code>सत्यम्</code> / <code>असत्यम्</code> / <code>शून्यम्</code></td><td>true / false / null</td><td><code>true</code> / <code>false</code> / <code>null</code></td></tr>
+      <tr><td><code>दर्शय(…)</code></td><td>cause to show</td><td><code>console.log(…)</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="basics">Variables &amp; functions</h2>
+  <p><code>नियत</code> is a constant, <code>चर</code> is reassignable. <code>कार्य</code> is a function —
+  as a statement or an expression. <code>फलम्</code> returns.</p>
+<pre><code><span class="c-kw">नियत</span> पाई = <span class="c-str">3.14159</span>।           <span class="c-cm"># const</span>
+<span class="c-kw">चर</span> गणना = ०।                   <span class="c-cm"># let (reassignable)</span>
+
+<span class="c-kw">कार्य</span> वर्गः (सङ्ख्या) {           <span class="c-cm"># function squares its argument</span>
+    <span class="c-kw">फलम्</span> सङ्ख्या * सङ्ख्या।
+}
+
+<span class="c-kw">नियत</span> द्विगुण = <span class="c-kw">कार्य</span>(न){ <span class="c-kw">फलम्</span> न * २। }।   <span class="c-cm"># function expression</span></code></pre>
+
+  <h2 id="control">Control flow</h2>
+<pre><code><span class="c-kw">यदि</span> (गणना > १०) {
+    दर्शय(<span class="c-str">"बहु"</span>)।
+} <span class="c-kw">अन्यथा</span> {
+    दर्शय(<span class="c-str">"अल्प"</span>)।
+}
+
+<span class="c-kw">चर</span> इ = ०।
+<span class="c-kw">यावत्</span> (इ &lt; ५) { इ = इ + १। }        <span class="c-cm"># while</span>
+
+<span class="c-kw">प्रत्येकम्</span> (अक्षरम् : सूची) {           <span class="c-cm"># for … of</span>
+    दर्शय(अक्षरम्)।
+}</code></pre>
+
+  <h2 id="data">Objects, arrays, strings</h2>
+  <p>An object literal is <code>कोष{ … }</code> (kośa, "treasury"). Arrays use <code>[ … ]</code>. Member
+  access and the standard-library methods read in Sanskrit — <code>.दीर्घता</code> is <code>.length</code>,
+  <code>.योजय(x)</code> is <code>.push(x)</code>.</p>
+<pre><code><span class="c-kw">नियत</span> कविः = <span class="c-kw">कोष</span>{ नाम: <span class="c-str">"कालिदासः"</span>, वर्षम्: ४०० }।
+दर्शय(कविः.नाम)।                       <span class="c-cm"># कालिदासः</span>
+
+<span class="c-kw">नियत</span> सूची = [<span class="c-str">"अ"</span>, <span class="c-str">"आ"</span>, <span class="c-str">"इ"</span>]।
+सूची.योजय(<span class="c-str">"ई"</span>)।                       <span class="c-cm"># push  → .दीर्घता is now 4</span>
+<span class="c-kw">नियत</span> बडे = सूची.गालय(<span class="c-kw">कार्य</span>(x){ <span class="c-kw">फलम्</span> x != <span class="c-str">"अ"</span>। })।   <span class="c-cm"># filter</span></code></pre>
+  <p>Strings interpolate with <code>अन्तर्न्यासः</code> — write <code>पाठ"…{expr}…"</code>:</p>
+<pre><code><span class="c-kw">नियत</span> नाम = <span class="c-str">"सीता"</span>।
+दर्शय(पाठ<span class="c-str">"नमस्ते {नाम}, स्वागतम्।"</span>)।   <span class="c-cm"># नमस्ते सीता, स्वागतम्।</span></code></pre>
+
+  <h2 id="sugar">Operators &amp; sugar</h2>
+  <p>Arithmetic and comparison use the familiar symbols (<code>+ - * / %</code>, <code>== != &lt; &gt; &lt;= &gt;=</code>,
+  <code>&amp;&amp; ||</code>). Sweeteners include compound assignment (<code>+=</code>), the ternary, and
+  the nullish default operator <code>अथवा</code> ("or else").</p>
+<pre><code>गणना += १।
+<span class="c-kw">नियत</span> स्थितिः = सिद्धम् ? <span class="c-str">"✓"</span> : <span class="c-str">"…"</span>।
+<span class="c-kw">नियत</span> पत्तनम् = पर्यावरण(<span class="c-str">"PORT"</span>) <span class="c-kw">अथवा</span> <span class="c-str">"8080"</span>।   <span class="c-cm"># default when null</span></code></pre>
+
+  <h2 id="match">Branch &amp; pattern match</h2>
+  <p><code>विकल्प</code> is a switch with no fall-through, and it doubles as a pattern matcher over object
+  and array shapes.</p>
+<pre><code><span class="c-kw">विकल्प</span> (आकृतिः) {
+    <span class="c-kw">स्थिति</span> <span class="c-kw">कोष</span>{ प्रकारः: <span class="c-str">"वृत्तम्"</span>, त्रिज्या: र }:
+        <span class="c-kw">फलम्</span> ३.१४ * र * र।
+    <span class="c-kw">स्थिति</span> <span class="c-kw">कोष</span>{ प्रकारः: <span class="c-str">"चतुरः"</span>, भुजा: भ }:
+        <span class="c-kw">फलम्</span> भ * भ।
+    <span class="c-kw">अन्यथा</span>:
+        <span class="c-kw">फलम्</span> ०।
+}</code></pre>
+
+  <h2 id="destructure">Destructuring</h2>
+<pre><code><span class="c-kw">नियत</span> <span class="c-kw">कोष</span>{ नाम, वर्षम् } = कविः।         <span class="c-cm"># object destructuring</span>
+<span class="c-kw">नियत</span> [प्रथमम्, द्वितीयम्] = सूची।      <span class="c-cm"># array destructuring</span></code></pre>
+
+  <h2 id="types">Gradual, erasable types</h2>
+  <p>Type annotations are optional and <strong>erased</strong> after checking — they add zero runtime cost,
+  exactly like TypeScript. Base types are <code>सङ्ख्या</code> (number), <code>अक्षर</code> (string),
+  <code>तथ्य</code> (boolean), <code>वस्तु</code> (object), <code>रिक्त</code> (void), and
+  <code>किमपि</code> (any). Composite forms cover arrays, object shapes, and function types.</p>
+<pre><code><span class="c-kw">नियत</span> वयः: सङ्ख्या = ३०।
+<span class="c-kw">नियत</span> नामानि: गण&lt;अक्षर&gt; = [<span class="c-str">"अ"</span>, <span class="c-str">"आ"</span>]।     <span class="c-cm"># array of strings</span>
+<span class="c-kw">नियत</span> कविः: { नाम: अक्षर, वर्षम्: सङ्ख्या } = कोष{ नाम: <span class="c-str">"क"</span>, वर्षम्: ४०० }।
+
+<span class="c-kw">कार्य</span> योग (अ: सङ्ख्या, ब: सङ्ख्या): सङ्ख्या {   <span class="c-cm"># typed params + return</span>
+    <span class="c-kw">फलम्</span> अ + ब।
+}</code></pre>
+  <div class="note"><span class="tag">Check without running</span>
+    <p><code>node src/cli.js check file.deva</code> type-checks a program and reports mismatches like
+    <code>प्रकारभेदः: गण&lt;अक्षर&gt; ← गण&lt;सङ्ख्या&gt;</code> — with no code executed.</p></div>
+
+  <h2 id="modules">Modules</h2>
+  <p><code>निर्यात</code> exports, <code>आयात { … } आ "path"</code> imports. Paths beginning with
+  <code>std/</code> resolve to the shipped standard library from anywhere. Imports support aliasing
+  (<code>रूपेण</code>) and re-export barrels.</p>
+<pre><code><span class="c-cm"># गणितागारम्.deva</span>
+<span class="c-kw">निर्यात कार्य</span> वर्गः (न) { <span class="c-kw">फलम्</span> न * न। }
+
+<span class="c-cm"># मुख्य.deva</span>
+<span class="c-kw">आयात</span> { वर्गः } <span class="c-kw">आ</span> <span class="c-str">"./गणितागारम्"</span>।
+<span class="c-kw">आयात</span> { मार्गकः } <span class="c-kw">आ</span> <span class="c-str">"std/मार्गकः"</span>।    <span class="c-cm"># the standard library</span>
+दर्शय(वर्गः(७))।</code></pre>
+
+  <h2 id="async">Async &amp; await</h2>
+  <p><code>असमकालिक कार्य</code> is an async function; <code>प्रतीक्षा</code> awaits. Promise methods chain in
+  Sanskrit: <code>.ततः</code> (then), <code>.दोषे</code> (catch), <code>.अन्ततः</code> (finally).</p>
+<pre><code><span class="c-kw">असमकालिक कार्य</span> आनयतु () {
+    <span class="c-kw">नियत</span> परि = <span class="c-kw">प्रतीक्षा</span> जाल.आनयप्रदत्त(<span class="c-str">"/api/सूची"</span>)।
+    <span class="c-kw">यदि</span> (परि.सफल) { दर्शय(परि.मूल्यम्.प्रदत्तम्)। }
+}</code></pre>
+
+  <h2 id="result">The Result model — errors as values</h2>
+  <p>Devabhāṣā has <strong>no exceptions</strong>. A fallible operation returns a <code>परिणाम</code> (Result):
+  <code>साधितम्(value)</code> on success, <code>विफलम्(error)</code> on failure. The shape is
+  <code>{ सफल, मूल्यम्, दोषः }</code>.</p>
+<pre><code><span class="c-kw">कार्य</span> भागः (अ, ब) {
+    <span class="c-kw">यदि</span> (ब == ०) { <span class="c-kw">फलम्</span> विफलम्(<span class="c-str">"शून्येन भागः"</span>)। }
+    <span class="c-kw">फलम्</span> साधितम्(अ / ब)।
+}</code></pre>
+  <p><code>उद्धृ</code> (uddhṛ, "extract") unwraps a Result or propagates its failure to the enclosing
+  function — Rust's <code>?</code>. <code>अथवा</code> supplies a fallback value.</p>
+<pre><code><span class="c-kw">असमकालिक कार्य</span> मुख्यम् () {
+    <span class="c-kw">नियत</span> मूल्यम् = <span class="c-kw">उद्धृ</span> भागः(१०, २)।       <span class="c-cm"># unwrap, or return the विफलम्</span>
+    <span class="c-kw">नियत</span> सुरक्षितम् = भागः(१, ०) <span class="c-kw">अथवा</span> ०।    <span class="c-cm"># default on failure</span>
+    <span class="c-kw">फलम्</span> साधितम्(मूल्यम्)।
+}</code></pre>
+  <div class="note teal"><span class="tag">Why it matters</span>
+    <p>Every fallible edge — file I/O, network, JSON parsing, database access, schema validation — returns
+    the same <code>परिणाम</code>. Failures are ordinary values you thread through the program with
+    <code>उद्धृ</code>, never control-flow that escapes past a missing <code>try</code>.</p></div>
+
+  <div class="pager">
+    <a href="index.html"><div class="dir">← Back</div>Home</a>
+    <a class="r" href="tutorial.html"><div class="dir">Next →</div>Tutorials</a>
+  </div>
+  </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="inner">
+    <div>देवभाषा · Devabhāṣā</div>
+    <div><a href="https://github.com/pariharshyamu/devabhasha">GitHub</a> · <a href="stdlib.html">Standard Library</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -11,8 +11,14 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createRequire } from 'node:module';
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, '..', 'src', 'cli.js');
+
+// node:sqlite is built in from Node 22.5+; on older Nodes (the CI matrix runs
+// 18/20/22) it doesn't exist, so skip rather than fail.
+try { createRequire(import.meta.url)('node:sqlite'); }
+catch { console.log('  (node:sqlite unavailable — needs Node 22.5+; skipping)\n0 पास, 0 फेल'); process.exit(0); }
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => cond ? (pass++, console.log('  ✓ ' + name))
