@@ -1,6 +1,6 @@
 {
   "name": "devabhasha",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "देवभाषा — a Sanskrit programming language for the web that transpiles to JavaScript",
   "type": "module",
   "main": "./src/index.js",
@@ -15,13 +15,15 @@
   },
   "files": [
     "src",
+    "examples/stdlib",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "start": "node src/cli.js",
     "test": "node test/all.js",
-    "test:smoke": "node test/test.js"
+    "test:smoke": "node test/test.js",
+    "prepublishOnly": "node test/all.js"
   },
   "keywords": [
     "sanskrit",
