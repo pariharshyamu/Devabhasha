@@ -921,6 +921,16 @@ import (e.g. `आवर्तय(५, "x")` is flagged across the boundary):
   (count). The optional `परीक्षकः` is a `record → परिणाम` validator (an आकृति
   wraps into one) run before every insert. Built on `सञ्चिका`'s JSON I/O — no
   new host dep, so a bundle stays self-contained. See *Persistence* below.
+- **सञ्चयः** (SQLite-backed store): the durable v2 of `कोष्ठागार` — the *same*
+  async/`परिणाम` CRUD API (`योजय`/`आनय`/`एकम्`/`अन्वेषय`/`परिवर्तय`/`निष्कासय`/
+  `गणना`), but records live in a real database table instead of a JSON file, so
+  writes are ACID and don't rewrite the whole file. `सञ्चयः(दत्ताधारः, "table",
+  परीक्षकः?)` takes an opened `दत्ताधारः` handle. Underneath it is `दत्ताधारः`
+  (dattādhāra, "data-base"): `दत्ताधारः.उद्घाटय(पथ)` opens SQLite (`node:sqlite`)
+  and hands back a handle with `आदेश` (exec), `सर्वे` (all rows), `प्रथमा` (one
+  row), `चालय` (run → `परिवर्तनानि`/`अन्तिमाङ्कः`), and `पिधा` (close) — each a
+  `परिणाम`, with bound params passed as a `गण`. Raw SQL and the document store
+  share one handle. See *Persistence* below.
 - **प्रलेख** (structured logging): `प्रलेखकः(base?)` builds a logger whose
   base fields ride on every line; `प्रलेख` is a ready default. Each method —
   `निदान`/`सूचना`/`चेतावनी`/`दोष` — emits one compact JSON line (a `काल`
@@ -1234,9 +1244,51 @@ whole backend arc together — **`कोष्ठागार` persists, `आक
 insert, `उद्धृ` propagates, `परिणाम` carries every verdict** — a schema-checked,
 file-backed service in one Sanskrit source with no external dependencies.
 
-*(For a SQL backend, a `node:sqlite`-backed variant is the natural v2 — it would
-trade the dependency-free/browser-portable property for real queries, a
-deliberate choice left open.)*
+### सञ्चयः — persistence v2 (the same store, on SQLite)
+
+`कोष्ठागार` rewrites a whole JSON file on every write and holds the collection in
+memory — fine for small data, wrong for a real service. The v2 keeps the *exact
+same API* and swaps the backend for a database. Two layers:
+
+**`दत्ताधारः` (dattādhāra, "data-base") — raw SQLite.** `दत्ताधारः.उद्घाटय(पथ)`
+opens (or creates) a `node:sqlite` database and returns a handle whose methods
+each return a `परिणाम`: `आदेश(sql)` runs DDL, `सर्वे(sql, params?)` returns all
+rows, `प्रथमा(sql, params?)` one row (or `शून्यम्`), `चालय(sql, params?)` a
+mutation (`→ { परिवर्तनानि, अन्तिमाङ्कः }` — changes and last-insert id), and
+`पिधा()` closes. Params bind as a `गण` — `?` placeholders, no string-built SQL.
+Everything is synchronous (so is `node:sqlite`), so no `प्रतीक्षा` on the handle.
+
+```
+नियत आधार = उद्धृ दत्ताधारः.उद्घाटय("काव्यम्.db")।
+उद्धृ आधार.आदेश("CREATE TABLE \"कवयः\"(\"नाम\" TEXT, \"वर्षम्\" INTEGER)")।
+उद्धृ आधार.चालय("INSERT INTO \"कवयः\" VALUES(?,?)", ["कालिदासः", ४५०])।
+नियत पुराणाः = उद्धृ आधार.सर्वे("SELECT \"नाम\" FROM \"कवयः\" WHERE \"वर्षम्\" < ?", [६००])।
+```
+
+**`std/सञ्चयः` — the document store, table-backed.** `सञ्चयः(आधार, "सारणी",
+परीक्षकः?)` gives back a handle with the identical CRUD surface as `कोष्ठागार`
+(`योजय`/`आनय`/`एकम्`/`अन्वेषय`/`परिवर्तय`/`निष्कासय`/`गणना`, every method
+`असमकालिक` and `परिणाम`-returning), so it is a drop-in — each record is one row
+(an autoincrement `अङ्कः` and a JSON `प्रदत्तम्` column), the optional `परीक्षकः`
+still validates before every insert, and an `आकृति` schema still wraps straight
+into one. Several stores can share a single opened handle, and raw SQL is always
+available on that same handle.
+
+```
+आयात { सञ्चयः } आ "std/सञ्चयः"।
+नियत आधार = उद्धृ दत्ताधारः.उद्घाटय("ग्रन्थालयः.db")।
+नियत ग्रन्थाः = सञ्चयः(आधार, "ग्रन्थाः")।
+नियत लेखः = उद्धृ प्रतीक्षा ग्रन्थाः.योजय(कोष{ शीर्षकम्: "गीता" })।   # ACID insert → record + अङ्कः
+```
+
+`examples/पुस्तकालयः.deva` is a runnable catalog that writes records, **closes
+the database and reopens it** to prove durability, patches a record, and then
+drops to a raw SQL `json_extract` aggregate through the very same handle — the
+persistence story end to end. The trade against `कोष्ठागार` is deliberate:
+`सञ्चयः` gains real queries and ACID durability but takes on `node:sqlite` (a
+Node dependency, unavailable in the browser, where `उद्घाटय` returns a clear
+failure `परिणाम`); `कोष्ठागार` stays dependency-free and host-portable. Same
+API, two backends — pick per deployment.
 
 **On "optimum":** each route's path is **compiled once at registration** into a
 segment list (static segments + `:param` markers), and routes are **grouped by

@@ -36,6 +36,11 @@ const __IO = (() => {
       संकेतय(s){ return btoa(unescape(encodeURIComponent(String(s)))); },
       विसंकेतय(s){ return decodeURIComponent(escape(atob(String(s)))); },
     },
+    // दत्ताधारः — SQLite is a backend concern; the browser has no local database, so
+    // उद्घाटय returns a clear failure Result (the same shape a program checks).
+    db: {
+      उद्घाटय(){ return err('SQLite (दत्ताधारः) is not available in the browser'); },
+    },
   };
 })();
 `;
