@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorials · Devabhāṣā</title>
+<meta name="description" content="Hands-on Devabhāṣā tutorials: hello world, a CLI program with the Result model, a reactive web page, a backend service, and a full-stack app.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html"><span class="deva">देवभाषा</span><span class="latin">Devabhāṣā</span></a>
+    <nav class="nav">
+      <button class="icon-btn menu-btn" data-action="menu" aria-label="Menu">☰</button>
+      <a href="guide.html">Guide</a>
+      <a href="tutorial.html" class="active">Tutorials</a>
+      <a href="stdlib.html">Standard Library</a>
+      <a href="backend.html">Backend &amp; Full-stack</a>
+      <a class="hide-sm" href="https://github.com/pariharshyamu/devabhasha">GitHub ↗</a>
+      <button class="icon-btn" data-action="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>Tutorials</h4>
+    <a href="#setup">0 · Setup</a>
+    <a href="#hello">1 · Hello, Devabhāṣā</a>
+    <a href="#cli">2 · A CLI with Results</a>
+    <a href="#types">3 · Add types</a>
+    <a href="#web">4 · A reactive web page</a>
+    <a href="#service">5 · A backend service</a>
+    <a href="#fullstack">6 · A full-stack app</a>
+    <a href="#next">Where to go next</a>
+  </aside>
+
+  <main>
+  <div class="content">
+  <h1>Tutorials</h1>
+  <p class="lead">Six short steps from a first program to a full-stack app — each one runnable with the
+  bundled compiler. No dependencies to install.</p>
+
+  <h2 id="setup">0 · Setup</h2>
+  <p>You need <strong>Node.js 18+</strong> (22.5+ for the SQLite chapters). Clone the repo — there is nothing
+  to <code>npm install</code>, because the compiler is dependency-free.</p>
+<pre><code>git clone https://github.com/pariharshyamu/devabhasha
+cd devabhasha
+node src/cli.js run examples/namaste.deva     <span class="c-cm"># smoke test</span></code></pre>
+  <p>The CLI has four verbs: <code>run</code> (compile + execute on Node), <code>build</code> (emit a
+  <code>.js</code> file), <code>check</code> (type-check only), and <code>serve</code> (a live dev server for
+  browser programs).</p>
+
+  <h2 id="hello">1 · Hello, Devabhāṣā</h2>
+  <p>Create <code>अभिवादनम्.deva</code>:</p>
+<pre><code><span class="c-cm"># अभिवादनम्.deva</span>
+<span class="c-kw">कार्य</span> अभिवादनम् (नाम) {
+    <span class="c-kw">फलम्</span> पाठ<span class="c-str">"नमस्ते, {नाम}!"</span>।
+}
+
+दर्शय(अभिवादनम्(<span class="c-str">"जगत्"</span>))।</code></pre>
+  <p>Run it:</p>
+<pre><code>node src/cli.js run अभिवादनम्.deva
+<span class="c-cm"># → नमस्ते, जगत्!</span></code></pre>
+  <p>Want to see the JavaScript? <code>node src/cli.js build अभिवादनम्.deva</code> writes
+  <code>अभिवादनम्.js</code> next to it — readable output you can read and debug.</p>
+
+  <h2 id="cli">2 · A CLI with Results</h2>
+  <p>Devabhāṣā has no exceptions. Let's write a divider that returns a <code>परिणाम</code> and thread it with
+  <code>उद्धृ</code>. Create <code>गणकः.deva</code>:</p>
+<pre><code><span class="c-cm"># गणकः.deva — a tiny calculator over the Result model</span>
+<span class="c-kw">कार्य</span> भागः (अ, ब) {
+    <span class="c-kw">यदि</span> (ब == ०) { <span class="c-kw">फलम्</span> विफलम्(<span class="c-str">"शून्येन भागः न सम्भवति"</span>)। }
+    <span class="c-kw">फलम्</span> साधितम्(अ / ब)।
+}
+
+<span class="c-kw">कार्य</span> मुख्यम् () {
+    <span class="c-kw">नियत</span> क = <span class="c-kw">उद्धृ</span> भागः(१००, ४)।      <span class="c-cm"># 25, or bail out with the विफलम्</span>
+    <span class="c-kw">नियत</span> ख = भागः(१, ०) <span class="c-kw">अथवा</span> ०।       <span class="c-cm"># default 0 on failure</span>
+    <span class="c-kw">फलम्</span> साधितम्(पाठ<span class="c-str">"क={क}, ख={ख}"</span>)।
+}
+
+<span class="c-kw">नियत</span> परि = मुख्यम्()।
+<span class="c-kw">यदि</span> (परि.सफल) { दर्शय(परि.मूल्यम्)। } <span class="c-kw">अन्यथा</span> { दर्शय(<span class="c-str">"दोषः: "</span> + परि.दोषः)। }</code></pre>
+<pre><code>node src/cli.js run गणकः.deva
+<span class="c-cm"># → क=25, ख=0</span></code></pre>
+  <div class="note"><span class="tag">The idea</span>
+    <p><code>उद्धृ</code> unwraps a success or returns the failure from the enclosing function — so the happy
+    path reads top-to-bottom, and errors are values, never thrown.</p></div>
+
+  <h2 id="types">3 · Add types</h2>
+  <p>Annotations are optional and erased after checking. Give the calculator typed signatures:</p>
+<pre><code><span class="c-kw">कार्य</span> भागः (अ: सङ्ख्या, ब: सङ्ख्या): परिणाम {
+    <span class="c-kw">यदि</span> (ब == ०) { <span class="c-kw">फलम्</span> विफलम्(<span class="c-str">"शून्येन भागः"</span>)। }
+    <span class="c-kw">फलम्</span> साधितम्(अ / ब)।
+}</code></pre>
+  <p>Now type-check without running:</p>
+<pre><code>node src/cli.js check गणकः.deva
+<span class="c-cm"># ✓ प्रकारपरीक्षा सफला (no type issues)</span></code></pre>
+  <p>Pass a string where a number is expected and <code>check</code> reports a
+  <code>प्रकारभेदः</code> (type mismatch) with the offending location — all before any code runs.</p>
+
+  <h2 id="web">4 · A reactive web page</h2>
+  <p>The web layer builds DOM in Sanskrit, styles it with <code>रूप</code>, and reacts with
+  <code>भाव</code> (a reactive cell) + <code>प्रभाव</code> (an effect that re-runs when its cells change).</p>
+<pre><code><span class="c-cm"># गणना.deva — a click counter</span>
+<span class="c-kw">भाव</span> गणना = ०।
+
+<span class="c-kw">चर</span> शीर्षः = रचय शीर्षः वाक्यम् बन्ध(<span class="c-kw">कार्य</span>(){ <span class="c-kw">फलम्</span> पाठ<span class="c-str">"गणना: {गणना}"</span>। })।
+<span class="c-kw">चर</span> पटः = रचय पटः वाक्यम् <span class="c-str">"वर्धय"</span> रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः }।
+श्रोता(पटः, <span class="c-str">"click"</span>, <span class="c-kw">कार्य</span>(){ गणना = गणना + १। })।   <span class="c-cm"># reassign → the heading re-renders</span>
+
+योजय(शीर्षः)। योजय(पटः)।</code></pre>
+  <p>Preview it live with the dev server (hot-reloads on save), then open the printed URL:</p>
+<pre><code>node src/cli.js serve गणना.deva</code></pre>
+  <p>See <a href="stdlib.html#web">the web layer reference</a> for case-role construction, styling words, keyed
+  lists, and components.</p>
+
+  <h2 id="service">5 · A backend service</h2>
+  <p>A real HTTP service on the standard library: <code>मार्गकः</code> routes, <code>आकृति</code> validates,
+  and <code>सञ्चयः</code> persists to SQLite. Create <code>सेवा.deva</code>:</p>
+<pre><code><span class="c-cm"># सेवा.deva</span>
+<span class="c-kw">आयात</span> { मार्गकः } <span class="c-kw">आ</span> <span class="c-str">"std/मार्गकः"</span>।
+<span class="c-kw">आयात</span> { सञ्चयः } <span class="c-kw">आ</span> <span class="c-str">"std/सञ्चयः"</span>।
+<span class="c-kw">आयात</span> { वस्तु, अक्षर, परीक्ष्य } <span class="c-kw">आ</span> <span class="c-str">"std/आकृति"</span>।
+
+<span class="c-kw">नियत</span> आकृतिः = वस्तु(<span class="c-kw">कोष</span>{ शीर्षकम्: अक्षर, लेखकः: अक्षर })।
+
+<span class="c-kw">असमकालिक कार्य</span> मुख्यम् () {
+    <span class="c-kw">नियत</span> आधार = <span class="c-kw">उद्धृ</span> दत्ताधारः.उद्घाटय(<span class="c-str">"ग्रन्थाः.db"</span>)।
+    <span class="c-kw">नियत</span> कोशः = सञ्चयः(आधार, <span class="c-str">"ग्रन्थाः"</span>, <span class="c-kw">कार्य</span>(र){ <span class="c-kw">फलम्</span> परीक्ष्य(आकृतिः, र)। })।
+
+    <span class="c-kw">नियत</span> ऐप = मार्गकः()।
+    ऐप.प्राप्(<span class="c-str">"/ग्रन्थाः"</span>, <span class="c-kw">असमकालिक कार्य</span>(अ, प्र){
+        <span class="c-kw">नियत</span> सर्वे = <span class="c-kw">प्रतीक्षा</span> कोशः.आनय()।
+        प्र.प्रेषय_जेसन(सर्वे.मूल्यम्)।
+    })।
+    ऐप.स्थापय(<span class="c-str">"/ग्रन्थाः"</span>, <span class="c-kw">असमकालिक कार्य</span>(अ, प्र){
+        <span class="c-kw">नियत</span> देहः = <span class="c-kw">प्रतीक्षा</span> अ.देहम्_जेसन()।
+        <span class="c-kw">नियत</span> योग = <span class="c-kw">प्रतीक्षा</span> कोशः.योजय(देहः.मूल्यम्)।   <span class="c-cm"># आकृति validates here</span>
+        <span class="c-kw">यदि</span> (योग.सफल) { प्र.स्थिति(२०१).प्रेषय_जेसन(योग.मूल्यम्)। }
+        <span class="c-kw">अन्यथा</span> { प्र.स्थिति(४२२).प्रेषय_जेसन(<span class="c-kw">कोष</span>{ दोषः: योग.दोषः })। }
+    })।
+    ऐप.चालय(८०८०)।
+}
+मुख्यम्()।</code></pre>
+<pre><code>node src/cli.js run सेवा.deva
+<span class="c-cm"># then, in another terminal:</span>
+curl -X POST localhost:8080/ग्रन्थाः -d '{"शीर्षकम्":"गीता","लेखकः":"व्यासः"}'
+curl localhost:8080/ग्रन्थाः</code></pre>
+  <p>A malformed body comes back as a <code>422</code> with a path-qualified reason — the schema is the door,
+  and nothing invalid reaches the database. Restart the process and the records are still there.</p>
+
+  <h2 id="fullstack">6 · A full-stack app</h2>
+  <p>The repository ships a complete example — a book catalog whose <strong>frontend and backend are both
+  Devabhāṣā</strong> — at <code>examples/पूर्णस्तर/</code>:</p>
+<pre><code>node examples/पूर्णस्तर/चालय.mjs
+<span class="c-cm"># → open http://localhost:8100</span></code></pre>
+  <ul>
+    <li>A reactive frontend (<code>अग्रिम.deva</code>) fetches the list, renders it with <code>प्रभाव</code>,
+    adds books by POST, deletes with a ✕, and shows the backend's validation error inline.</li>
+    <li>A backend (<code>पश्चिम.deva</code>) runs <code>मार्गकः</code> + <code>सञ्चयः</code> (SQLite) +
+    <code>आकृति</code>, and serves the compiled frontend at <code>/</code>.</li>
+  </ul>
+  <p>Read the walkthrough in the <a href="backend.html#fullstack">Backend &amp; Full-stack guide</a>.</p>
+
+  <h2 id="next">Where to go next</h2>
+  <ul>
+    <li><a href="guide.html">Language Guide</a> — the full syntax, types, and Result model.</li>
+    <li><a href="stdlib.html">Standard Library</a> — strings, arrays, math, the web layer, I/O, and the server modules.</li>
+    <li><a href="backend.html">Backend &amp; Full-stack</a> — routing, persistence, auth, sessions, and the full stack.</li>
+    <li>Browse <code>examples/</code> in the repo — every file is runnable.</li>
+  </ul>
+
+  <div class="pager">
+    <a href="guide.html"><div class="dir">← Back</div>Language Guide</a>
+    <a class="r" href="stdlib.html"><div class="dir">Next →</div>Standard Library</a>
+  </div>
+  </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="inner">
+    <div>देवभाषा · Devabhāṣā</div>
+    <div><a href="https://github.com/pariharshyamu/devabhasha">GitHub</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

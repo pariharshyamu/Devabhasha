@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devabhāṣā · देवभाषा — a Sanskrit programming language</title>
+<meta name="description" content="Devabhāṣā (देवभाषा) is a Sanskrit programming language that transpiles to readable JavaScript — with a reactive web layer, a Result error model, gradual types, a router, SQLite persistence, and a self-hosting compiler.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html"><span class="deva">देवभाषा</span><span class="latin">Devabhāṣā</span></a>
+    <nav class="nav">
+      <a href="guide.html">Guide</a>
+      <a href="tutorial.html">Tutorials</a>
+      <a href="stdlib.html">Standard Library</a>
+      <a href="backend.html">Backend &amp; Full-stack</a>
+      <a class="hide-sm" href="https://github.com/pariharshyamu/devabhasha">GitHub ↗</a>
+      <button class="icon-btn" data-action="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="kicker">A Sanskrit programming language</div>
+  <h1>Write programs in <span class="devname">संस्कृतम्</span>.<br>Ship readable JavaScript.</h1>
+  <p class="lead">Devabhāṣā is a small, dependency-free language whose source is written in Devanagari and
+  transpiles to clean JavaScript — with a reactive web layer, a no-exceptions error model, gradual
+  erasable types, a router, SQLite persistence, and a compiler that <em>compiles itself</em>.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="tutorial.html">Start the tutorial →</a>
+    <a class="btn btn-ghost" href="guide.html">Read the guide</a>
+  </div>
+
+  <div class="hero-code">
+<pre><code><span class="c-cm"># अभिवादनम् — a greeting (abhivādanam)</span>
+<span class="c-kw">कार्य</span> अभिवादनम् (नाम) {
+    <span class="c-kw">फलम्</span> <span class="c-str">"नमस्ते, "</span> + नाम।
+}
+
+दर्शय(अभिवादनम्(<span class="c-str">"जगत्"</span>))।   <span class="c-cm"># → नमस्ते, जगत्</span></code></pre>
+    <p style="text-align:center;color:var(--muted);font-size:14px;margin-top:-6px">
+      compiles to <code>function abhivaadanam(naama){ return "नमस्ते, " + naama; }</code>
+    </p>
+  </div>
+</section>
+
+<div class="wide">
+  <div class="features">
+    <div class="card"><div class="emoji">📜</div><h3>Sanskrit, all the way down</h3>
+      <p>Keywords, the standard library, the router, even the compiler are written in Devanagari.
+      Identifiers transliterate to stable ASCII, so the output JavaScript stays portable.</p></div>
+    <div class="card"><div class="emoji">⚛️</div><h3>A reactive web layer</h3>
+      <p>Build DOM with Pāṇinian case roles, style it in Sanskrit (<code>रूप</code>), and drive it with
+      fine-grained reactivity (<code>भाव</code>/<code>प्रभाव</code>) — no virtual DOM, no framework.</p></div>
+    <div class="card"><div class="emoji">🛡️</div><h3>Errors as values</h3>
+      <p>No exceptions. Fallible operations return a <code>परिणाम</code> (Result); <code>उद्धृ</code> propagates
+      failures like Rust's <code>?</code>, and <code>अथवा</code> supplies defaults.</p></div>
+    <div class="card"><div class="emoji">🔤</div><h3>Gradual, erasable types</h3>
+      <p>Optional type annotations (<code>: सङ्ख्या</code>, <code>गण&lt;अक्षर&gt;</code>, object shapes) are
+      checked, then erased — zero runtime cost, TypeScript-style.</p></div>
+    <div class="card"><div class="emoji">🗄️</div><h3>A real backend story</h3>
+      <p>An HTTP server, a Koa-style router, schema validation, signed-cookie sessions, and
+      <strong>SQLite persistence</strong> — an end-to-end backend with no external dependencies.</p></div>
+    <div class="card"><div class="emoji">♻️</div><h3>Self-hosting</h3>
+      <p>The lexer, parser, and codegen are written in Devabhāṣā and reach a byte-for-byte fixpoint —
+      the compiler compiling the compiler produces itself.</p></div>
+  </div>
+
+  <div class="split">
+    <div>
+      <h2>Both ends, one language</h2>
+      <p>A reactive Sanskrit frontend talks over real HTTP to a Sanskrit backend that routes, validates,
+      and persists to a database. The <code>परिणाम</code> error model and JSON shapes are shared across the
+      wire — the same <code>सफल</code>/<code>मूल्यम्</code>/<code>दोषः</code> on both sides.</p>
+      <p><a href="backend.html">Explore the backend &amp; full-stack guide →</a></p>
+    </div>
+    <div>
+<pre><code><span class="c-cm"># the backend, on the modern stack</span>
+<span class="c-kw">नियत</span> ऐप = मार्गकः()।
+ऐप.प्राप्(<span class="c-str">"/api/ग्रन्थाः"</span>, <span class="c-kw">असमकालिक कार्य</span>(अ, प्र){
+    <span class="c-kw">नियत</span> सर्वे = <span class="c-kw">प्रतीक्षा</span> कोशः.आनय()।
+    प्र.प्रेषय_जेसन(सर्वे.मूल्यम्)।
+})।
+ऐप.चालय(८१००)।</code></pre>
+    </div>
+  </div>
+
+  <div class="note teal" style="max-width:760px;margin:0 auto 60px">
+    <span class="tag">Requirements</span>
+    <p>Devabhāṣā is dependency-free and runs on <strong>Node.js 18+</strong>. The optional SQLite persistence
+    (<code>दत्ताधारः</code>/<code>सञ्चयः</code>) uses the built-in <code>node:sqlite</code> module, which needs
+    <strong>Node.js 22.5+</strong>. In the browser it degrades to a clear failure Result.</p>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="inner">
+    <div>देवभाषा · Devabhāṣā — a Sanskrit programming language for the web.</div>
+    <div><a href="https://github.com/pariharshyamu/devabhasha">GitHub</a> · <a href="guide.html">Guide</a> · <a href="tutorial.html">Tutorials</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

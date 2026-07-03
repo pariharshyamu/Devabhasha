@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backend &amp; Full-stack · Devabhāṣā</title>
+<meta name="description" content="Build backends in Devabhāṣā: an HTTP server, a Koa-style router, schema validation, SQLite persistence, auth and sessions, and a full-stack app with both ends in Sanskrit.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html"><span class="deva">देवभाषा</span><span class="latin">Devabhāṣā</span></a>
+    <nav class="nav">
+      <button class="icon-btn menu-btn" data-action="menu" aria-label="Menu">☰</button>
+      <a href="guide.html">Guide</a>
+      <a href="tutorial.html">Tutorials</a>
+      <a href="stdlib.html">Standard Library</a>
+      <a href="backend.html" class="active">Backend &amp; Full-stack</a>
+      <a class="hide-sm" href="https://github.com/pariharshyamu/devabhasha">GitHub ↗</a>
+      <button class="icon-btn" data-action="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>Backend &amp; Full-stack</h4>
+    <a href="#overview">The backend arc</a>
+    <a href="#server">Server &amp; router</a>
+    <a href="#validate">The typed boundary</a>
+    <a href="#persist">Persistence &amp; SQLite</a>
+    <a href="#sql">Raw SQL</a>
+    <a href="#auth">Identity &amp; sessions</a>
+    <a href="#middleware">Middleware &amp; config</a>
+    <a href="#fullstack">A full-stack app</a>
+  </aside>
+
+  <main>
+  <div class="content">
+  <h1>Backend &amp; Full-stack</h1>
+  <p class="lead">Devabhāṣā has an end-to-end backend story in one Sanskrit source, with no external
+  dependencies: validate at the edge → persist → configure and log → authenticate → serve — all threaded
+  through the <code>परिणाम</code> error model.</p>
+
+  <h2 id="overview">The backend arc</h2>
+  <p>Five capabilities, each a standard-library module written in Devabhāṣā:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Concern</th><th>Module</th></tr></thead>
+    <tbody>
+      <tr><td>Typed boundaries</td><td><code>std/आकृति</code> — runtime schema validation</td></tr>
+      <tr><td>Persistence</td><td><code>std/कोष्ठागार</code> (JSON file) · <code>std/सञ्चयः</code> (SQLite)</td></tr>
+      <tr><td>Service essentials</td><td><code>काल</code> (time) · <code>पर्यावरण</code> (env) · <code>std/प्रलेख</code> (logs)</td></tr>
+      <tr><td>Identity &amp; security</td><td><code>गुप्ति</code> (crypto) · <code>std/प्रमाणम्</code> (auth) · <code>std/सत्र</code> (sessions)</td></tr>
+      <tr><td>HTTP maturity</td><td><code>std/मार्गकः</code> (router) · <code>std/जालमध्यगाः</code> (static, CORS) · <code>std/कुकी</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="server">Server &amp; router</h2>
+  <p><code>सेवक</code> is the minimal HTTP primitive; <code>std/मार्गकः</code> turns it into a clean router with
+  method + path dispatch, <code>:param</code> capture, and Koa-style middleware. The request exposes
+  <code>मार्गः</code> (path), <code>रीतिः</code> (method), <code>शीर्षाणि</code> (headers),
+  <code>प्राचलाः</code> (path params), and <code>देहम्_जेसन()</code> (parse the body → <code>परिणाम</code>).
+  The response has <code>स्थिति(n)</code>, <code>शीर्षम्(k,v)</code>, <code>लेखय(text)</code>, and
+  <code>प्रेषय_जेसन(obj)</code>.</p>
+<pre><code><span class="c-kw">आयात</span> { मार्गकः } <span class="c-kw">आ</span> <span class="c-str">"std/मार्गकः"</span>।
+<span class="c-kw">नियत</span> ऐप = मार्गकः()।
+
+ऐप.प्राप्(<span class="c-str">"/ग्रन्थाः/:अङ्कः"</span>, <span class="c-kw">कार्य</span>(अ, प्र){
+    प्र.प्रेषय_जेसन(<span class="c-kw">कोष</span>{ अङ्कः: अ.प्राचलाः[<span class="c-str">"अङ्कः"</span>] })।
+})।
+ऐप.स्थापय(<span class="c-str">"/ग्रन्थाः"</span>, <span class="c-kw">कार्य</span>(अ, प्र){ <span class="c-cm">/* POST */</span> })।
+ऐप.निष्कासय(<span class="c-str">"/ग्रन्थाः/:अङ्कः"</span>, <span class="c-kw">कार्य</span>(अ, प्र){ <span class="c-cm">/* DELETE */</span> })।
+ऐप.उपयुज्(<span class="c-str">/* middleware */</span>)।
+ऐप.चालय(८०८०)।</code></pre>
+
+  <h2 id="validate">The typed boundary — आकृति</h2>
+  <p>The erased <code>प्रकार</code> types can't guard untrusted input (a request body, parsed JSON, an env
+  var). <code>std/आकृति</code> mirrors the shape <em>at runtime</em>: <code>परीक्ष्य(schema, value)</code>
+  returns the value or a path-qualified <code>विफलम्</code> like
+  <code>अङ्काः[1]: अपेक्षितम् सङ्ख्या, प्राप्तम् अक्षर</code>. It pairs with <code>उद्धृ</code>.</p>
+<pre><code><span class="c-kw">आयात</span> { वस्तु, अक्षर, सङ्ख्या, परीक्ष्य } <span class="c-kw">आ</span> <span class="c-str">"std/आकृति"</span>।
+<span class="c-kw">नियत</span> आकृतिः = वस्तु(<span class="c-kw">कोष</span>{ शीर्षकम्: अक्षर, वर्षम्: सङ्ख्या })।
+<span class="c-kw">नियत</span> देहः = <span class="c-kw">उद्धृ</span> परीक्ष्य(आकृतिः, कच्चम्)।   <span class="c-cm"># a typed, Result-carrying value</span></code></pre>
+
+  <h2 id="persist">Persistence &amp; SQLite</h2>
+  <p>Two backends behind <strong>one API</strong> — <code>योजय</code>/<code>आनय</code>/<code>एकम्</code>/
+  <code>अन्वेषय</code>/<code>परिवर्तय</code>/<code>निष्कासय</code>/<code>गणना</code>, every method
+  <code>असमकालिक</code> and <code>परिणाम</code>-returning:</p>
+  <ul>
+    <li><strong><code>std/कोष्ठागार</code></strong> — a JSON-file document store. Dependency-free and
+    browser-portable; fine for small data.</li>
+    <li><strong><code>std/सञ्चयः</code></strong> — the durable v2 on <strong>SQLite</strong>: ACID writes, no
+    full-file rewrites, and raw SQL on the same handle. Needs Node 22.5+ (<code>node:sqlite</code>).</li>
+  </ul>
+<pre><code><span class="c-kw">आयात</span> { सञ्चयः } <span class="c-kw">आ</span> <span class="c-str">"std/सञ्चयः"</span>।
+<span class="c-kw">नियत</span> आधार = <span class="c-kw">उद्धृ</span> दत्ताधारः.उद्घाटय(<span class="c-str">"ग्रन्थालयः.db"</span>)।
+<span class="c-kw">नियत</span> कोशः = सञ्चयः(आधार, <span class="c-str">"ग्रन्थाः"</span>)।             <span class="c-cm"># optional validator as 3rd arg</span>
+<span class="c-kw">नियत</span> लेखः = <span class="c-kw">उद्धृ</span> <span class="c-kw">प्रतीक्षा</span> कोशः.योजय(<span class="c-kw">कोष</span>{ शीर्षकम्: <span class="c-str">"गीता"</span> })।   <span class="c-cm"># ACID insert → record + अङ्कः</span>
+<span class="c-kw">नियत</span> सर्वे = <span class="c-kw">उद्धृ</span> <span class="c-kw">प्रतीक्षा</span> कोशः.आनय()।                          <span class="c-cm"># every record → गण</span></code></pre>
+  <div class="note"><span class="tag">The trade</span>
+    <p><code>कोष्ठागार</code> stays dependency-free and runs anywhere; <code>सञ्चयः</code> gains real queries
+    and durability at the cost of <code>node:sqlite</code>. Same API — pick per deployment.</p></div>
+
+  <h2 id="sql">Raw SQL — दत्ताधारः</h2>
+  <p>Underneath the store is <code>दत्ताधारः</code> (dattādhāra, a "data-base" calque). Its handle methods
+  each return a <code>परिणाम</code>, and bound params are passed as a <code>गण</code>:
+  <code>आदेश</code> (exec), <code>सर्वे</code> (all rows), <code>प्रथमा</code> (one row),
+  <code>चालय</code> (run → changes/last-id), <code>पिधा</code> (close).</p>
+<pre><code><span class="c-kw">नियत</span> आधार = <span class="c-kw">उद्धृ</span> दत्ताधारः.उद्घाटय(<span class="c-str">"काव्यम्.db"</span>)।
+<span class="c-kw">उद्धृ</span> आधार.आदेश(<span class="c-str">"CREATE TABLE कवयः(नाम TEXT, वर्षम् INTEGER)"</span>)।
+<span class="c-kw">उद्धृ</span> आधार.चालय(<span class="c-str">"INSERT INTO कवयः VALUES(?,?)"</span>, [<span class="c-str">"कालिदासः"</span>, ४५०])।
+<span class="c-kw">नियत</span> पुराणाः = <span class="c-kw">उद्धृ</span> आधार.सर्वे(<span class="c-str">"SELECT नाम FROM कवयः WHERE वर्षम् &lt; ?"</span>, [६००])।</code></pre>
+
+  <h2 id="auth">Identity &amp; sessions</h2>
+  <p><code>गुप्ति</code> gives the crypto primitives (SHA-256, HMAC, scrypt, secure random, base64url).
+  <code>std/प्रमाणम्</code> builds on them: <code>पत्रम्</code> issues and verifies tamper-evident signed
+  tokens, and <code>गूढपदम्</code> does salted scrypt password hashing with a constant-time check.
+  <code>std/सत्र</code> ties those to cookies as signed-cookie sessions — the session <em>is</em> a token in
+  a cookie, so it needs no server-side store.</p>
+<pre><code><span class="c-kw">आयात</span> { गूढपदम् } <span class="c-kw">आ</span> <span class="c-str">"std/प्रमाणम्"</span>।
+<span class="c-kw">नियत</span> गूढम् = गूढपदम्.रचय(<span class="c-str">"मन्त्रः"</span>)।              <span class="c-cm"># hash at signup</span>
+<span class="c-kw">यदि</span> (गूढपदम्.मेलय(दत्तम्, गूढम्)) { <span class="c-cm">/* login ok */</span> }   <span class="c-cm"># constant-time verify</span></code></pre>
+
+  <h2 id="middleware">Middleware &amp; config</h2>
+  <p>Middleware runs on <strong>every</strong> request (Koa-style); one that responds without calling
+  <code>अग्रे()</code> short-circuits before routing. That's what lets these compose:</p>
+  <ul>
+    <li><code>std/जालमध्यगाः</code> — <code>स्थैतिक(dir)</code> serves static assets; <code>कोर्स(opts)</code>
+    sets CORS headers and answers preflight.</li>
+    <li><code>std/सत्र</code> — <code>सत्रमध्यगः(key)</code> reads/verifies the session into
+    <code>अ.सत्रम्</code> and adds <code>प्र.सत्रस्थापय</code> / <code>प्र.सत्रनाशः</code>.</li>
+    <li><code>पर्यावरण(नाम) अथवा "default"</code> is config-with-a-default; <code>std/प्रलेख</code> emits one
+    greppable JSON line per event.</li>
+  </ul>
+<pre><code>ऐप.उपयुज्(कोर्स())।                     <span class="c-cm"># CORS on every response</span>
+ऐप.उपयुज्(सत्रमध्यगः(कुञ्जी))।          <span class="c-cm"># signed-cookie sessions</span>
+ऐप.उपयुज्(स्थैतिक(<span class="c-str">"./सार्वजनिक"</span>))।       <span class="c-cm"># static files, else fall through</span></code></pre>
+
+  <h2 id="fullstack">A full-stack app</h2>
+  <p>The repository ships <code>examples/पूर्णस्तर/</code> — a book catalog whose <strong>frontend and backend
+  are both Devabhāṣā</strong>, sharing the language, the <code>परिणाम</code> model, and the JSON shapes over
+  the wire.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Route</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /</code></td><td>serves the HTML page running the compiled frontend</td></tr>
+      <tr><td><code>GET /api/ग्रन्थाः</code></td><td>the book list as JSON (from the database)</td></tr>
+      <tr><td><code>POST /api/ग्रन्थाः</code></td><td>validate (आकृति) + persist (सञ्चयः) → <code>201</code>, or <code>422</code></td></tr>
+      <tr><td><code>DELETE /api/ग्रन्थाः/:अङ्कः</code></td><td>delete by id</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><strong>Frontend</strong> (<code>अग्रिम.deva</code>) — reactive DOM (<code>भाव</code>/<code>प्रभाव</code>):
+    fetches the list, renders it, POSTs new books, deletes with a ✕, and surfaces the backend's validation
+    error inline.</li>
+    <li><strong>Backend</strong> (<code>पश्चिम.deva</code>) — <code>मार्गकः</code> + <code>सञ्चयः</code> (SQLite)
+    + <code>आकृति</code>; seeds two books, and the data survives a restart.</li>
+    <li><strong>Harness</strong> (<code>चालय.mjs</code>) — compiles the frontend to a browser bundle and runs
+    the backend that serves it.</li>
+  </ul>
+<pre><code>node examples/पूर्णस्तर/चालय.mjs
+<span class="c-cm"># → open http://localhost:8100</span></code></pre>
+  <div class="note teal"><span class="tag">One language, both ends</span>
+    <p>A reactive Sanskrit frontend talks over real HTTP to a Sanskrit backend that routes, validates, and
+    persists to a database — end to end, no dependencies beyond <code>node:sqlite</code>.</p></div>
+
+  <div class="pager">
+    <a href="stdlib.html"><div class="dir">← Back</div>Standard Library</a>
+    <a class="r" href="https://github.com/pariharshyamu/devabhasha"><div class="dir">Next →</div>The source on GitHub</a>
+  </div>
+  </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="inner">
+    <div>देवभाषा · Devabhāṣā</div>
+    <div><a href="https://github.com/pariharshyamu/devabhasha">GitHub</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

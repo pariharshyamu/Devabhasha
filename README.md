@@ -10,6 +10,19 @@ Devanagari; output is readable JavaScript.
 }                             }
 ```
 
+### 📖 Documentation & tutorials → **<https://pariharshyamu.github.io/devabhasha/>**
+
+A full documentation site lives in [`docs/`](docs/) and is published to GitHub
+Pages: a [language guide](docs/guide.html), step-by-step
+[tutorials](docs/tutorial.html), a [standard-library reference](docs/stdlib.html),
+and a [backend & full-stack guide](docs/backend.html). The rest of this README
+is a single-page deep dive into the same material.
+
+> **Enabling the site** (repo owner, one time): Settings → Pages → Build and
+> deployment → Source: **GitHub Actions**. The
+> [`Deploy docs`](.github/workflows/pages.yml) workflow then publishes `docs/` on
+> every push to `main`. (Or set Source to *Deploy from a branch* → `main` → `/docs`.)
+
 ## Quick start
 
 ```bash

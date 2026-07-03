@@ -27,6 +27,10 @@ if (!existsSync(join(dir, 'अग्रिम.deva')) || !existsSync(join(dir, '
   process.exit(0);
 }
 
+// the backend uses सञ्चयः (SQLite); on Nodes without node:sqlite (< 22.5), skip.
+try { (await import('node:module')).createRequire(import.meta.url)('node:sqlite'); }
+catch { console.log('  (node:sqlite unavailable — needs Node 22.5+; skipping)\n0 पास, 0 फेल'); process.exit(0); }
+
 // ---- frontend compiles to a runnable browser bundle ----
 {
   const front = readFileSync(join(dir, 'अग्रिम.deva'), 'utf8');

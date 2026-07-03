@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standard Library · Devabhāṣā</title>
+<meta name="description" content="The Devabhāṣā standard library: string/array/object methods, math, the reactive web layer, file & network I/O, globals, and the std/ modules.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%89%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html"><span class="deva">देवभाषा</span><span class="latin">Devabhāṣā</span></a>
+    <nav class="nav">
+      <button class="icon-btn menu-btn" data-action="menu" aria-label="Menu">☰</button>
+      <a href="guide.html">Guide</a>
+      <a href="tutorial.html">Tutorials</a>
+      <a href="stdlib.html" class="active">Standard Library</a>
+      <a href="backend.html">Backend &amp; Full-stack</a>
+      <a class="hide-sm" href="https://github.com/pariharshyamu/devabhasha">GitHub ↗</a>
+      <button class="icon-btn" data-action="theme" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>Standard Library</h4>
+    <a href="#methods">Strings &amp; arrays</a>
+    <a href="#objects">Objects</a>
+    <a href="#math">Math (गणित)</a>
+    <a href="#globals">Globals</a>
+    <a href="#web">The web layer</a>
+    <a href="#io">File &amp; network I/O</a>
+    <a href="#modules">The std/ modules</a>
+  </aside>
+
+  <main>
+  <div class="content">
+  <h1>Standard Library</h1>
+  <p class="lead">Method names read as Sanskrit and lower to the JavaScript you'd expect —
+  <code>.दीर्घता</code> is <code>.length</code>, <code>पद.उच्च()</code> is
+  <code>.toUpperCase()</code>. The higher-level modules under <code>std/</code> are themselves written in
+  Devabhāṣā.</p>
+
+  <h2 id="methods">Strings &amp; arrays</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>JavaScript</th><th>Works on</th></tr></thead>
+    <tbody>
+      <tr><td><code>.दीर्घता</code></td><td><code>.length</code></td><td>string, array</td></tr>
+      <tr><td><code>.खण्ड(a,b)</code></td><td><code>.slice</code></td><td>string, array</td></tr>
+      <tr><td><code>.अस्ति(x)</code></td><td><code>.includes</code></td><td>string, array</td></tr>
+      <tr><td><code>.अनुक्रमणिका(x)</code></td><td><code>.indexOf</code></td><td>string, array</td></tr>
+      <tr><td><code>.संयोजय(…)</code></td><td><code>.concat</code></td><td>string, array</td></tr>
+      <tr><td><code>.विभज(sep)</code></td><td><code>.split</code></td><td>string</td></tr>
+      <tr><td><code>.उच्च()</code> / <code>.नीच()</code></td><td><code>.toUpperCase</code> / <code>.toLowerCase</code></td><td>string</td></tr>
+      <tr><td><code>.छिन्द्धि()</code></td><td><code>.trim</code></td><td>string</td></tr>
+      <tr><td><code>.आरभते(s)</code> / <code>.समाप्यते(s)</code></td><td><code>.startsWith</code> / <code>.endsWith</code></td><td>string</td></tr>
+      <tr><td><code>.योजय(x)</code> / <code>.अपनय()</code></td><td><code>.push</code> / <code>.pop</code></td><td>array</td></tr>
+      <tr><td><code>.प्रतिचित्रय(fn)</code></td><td><code>.map</code></td><td>array</td></tr>
+      <tr><td><code>.गालय(fn)</code></td><td><code>.filter</code></td><td>array</td></tr>
+      <tr><td><code>.प्रत्येकस्मिन्(fn)</code></td><td><code>.forEach</code></td><td>array</td></tr>
+      <tr><td><code>.सम्मील(sep)</code></td><td><code>.join</code></td><td>array → string</td></tr>
+      <tr><td><code>.विपर्यय()</code></td><td><code>.reverse</code></td><td>array</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="objects">Objects</h2>
+  <p>The <code>सङ्ग्रह</code> namespace maps to <code>Object</code> statics.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>JavaScript</th></tr></thead>
+    <tbody>
+      <tr><td><code>सङ्ग्रह.कुञ्जयः(o)</code></td><td><code>Object.keys</code></td></tr>
+      <tr><td><code>सङ्ग्रह.मूल्यानि(o)</code></td><td><code>Object.values</code></td></tr>
+      <tr><td><code>सङ्ग्रह.प्रविष्टयः(o)</code></td><td><code>Object.entries</code></td></tr>
+      <tr><td><code>सङ्ग्रह.समायोजय(t,s)</code></td><td><code>Object.assign</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="math">Math (गणित)</h2>
+  <p><code>गणित</code> is <code>Math</code> — with classically-named trigonometry.
+  <code>गणित.ज्या</code> (jyā, the historical Sanskrit term that gave English "sine") is
+  <code>Math.sin</code>; <code>गणित.कोटिज्या</code> is cosine.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>JavaScript</th></tr></thead>
+    <tbody>
+      <tr><td><code>गणित.वर्गमूलम्(x)</code></td><td><code>Math.sqrt</code></td></tr>
+      <tr><td><code>गणित.घातः(a,b)</code></td><td><code>Math.pow</code></td></tr>
+      <tr><td><code>गणित.निरपेक्षम्(x)</code></td><td><code>Math.abs</code></td></tr>
+      <tr><td><code>गणित.अधःपातः</code> / <code>ऊर्ध्वपातः</code> / <code>सन्निकर्षः</code></td><td><code>floor</code> / <code>ceil</code> / <code>round</code></td></tr>
+      <tr><td><code>गणित.ज्या</code> / <code>कोटिज्या</code> / <code>स्पर्शज्या</code></td><td><code>sin</code> / <code>cos</code> / <code>tan</code></td></tr>
+      <tr><td><code>गणित.अधिकतमः</code> / <code>न्यूनतमः</code></td><td><code>max</code> / <code>min</code></td></tr>
+      <tr><td><code>गणित.यादृच्छिकम्()</code></td><td><code>Math.random</code></td></tr>
+      <tr><td><code>गणित.पाई</code> / <code>यूलरांकः</code></td><td><code>Math.PI</code> / <code>Math.E</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="globals">Globals</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>दर्शय(…)</code></td><td>print (<code>console.log</code>)</td></tr>
+      <tr><td><code>साधितम्(v)</code> / <code>विफलम्(e)</code></td><td>construct an Ok / Err <code>परिणाम</code></td></tr>
+      <tr><td><code>प्रदत्त.सूत्रय(v)</code> / <code>.विश्लेषय(s)</code></td><td>JSON stringify / parse → <code>परिणाम</code></td></tr>
+      <tr><td><code>अङ्कय(s)</code></td><td>parse a string to a number → <code>परिणाम</code></td></tr>
+      <tr><td><code>काल()</code></td><td>current epoch milliseconds</td></tr>
+      <tr><td><code>पर्यावरण(नाम)</code></td><td>an environment variable, or <code>शून्यम्</code></td></tr>
+      <tr><td><code>गुप्ति</code></td><td>cryptography (hashing, HMAC, scrypt, random, base64url)</td></tr>
+      <tr><td><code>स्वरूपम्(x)</code></td><td><code>typeof</code>, Sanskrit-named</td></tr>
+      <tr><td><code>दत्ताधारः.उद्घाटय(पथ)</code></td><td>open a SQLite database (Node 22.5+)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="web">The web layer</h2>
+  <p>Devabhāṣā builds DOM with a Pāṇinian construction verb (<code>रचय</code> / <code>अङ्गम्</code>), styles
+  it with a Sanskrit CSS vocabulary (<code>रूप</code>), and drives it with fine-grained reactivity.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>रचय tag वाक्यम् text रूप {…} {children}</code></td><td>create an element (text, styles, children — all optional)</td></tr>
+      <tr><td><code>योजय(node[, target])</code></td><td>mount / append to the DOM</td></tr>
+      <tr><td><code>श्रोता(node, ev, fn)</code></td><td><code>addEventListener</code></td></tr>
+      <tr><td><code>भाव x = …</code></td><td>a reactive state cell (reassign to update)</td></tr>
+      <tr><td><code>प्रभाव(fn)</code></td><td>an effect that re-runs when the cells it reads change</td></tr>
+      <tr><td><code>बन्ध(fn)</code></td><td>a text node bound to a reactive thunk</td></tr>
+      <tr><td><code>आवली(…)</code></td><td>keyed list reconciliation</td></tr>
+      <tr><td><code>रूप { वर्णः: …, पृष्ठभूमिः: … }</code></td><td>inline styles in Sanskrit (color, spacing, layout)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Colors and layout keywords are Sanskrit too: <code>रक्तः</code> (red), <code>नीलः</code> (navy),
+  <code>श्वेतः</code> (white), <code>प्रवाहः</code> (flex), <code>मध्ये</code> (space-between). Unknown
+  property names and values pass through unchanged, so raw CSS still works.</p>
+
+  <h2 id="io">File &amp; network I/O</h2>
+  <p>Every I/O operation is <code>असमकालिक</code> and returns a <code>परिणाम</code> — a failed read or fetch is
+  a value, never a throw. The program is bound to an <code>__IO</code> <em>interface</em>, so the same source
+  runs on the Node backend or a browser shim.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sanskrit</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><code>सञ्चिका.पठ(पथ)</code> / <code>.लिख(पथ, द)</code></td><td>read / write a file</td></tr>
+      <tr><td><code>सञ्चिका.पठप्रदत्त</code> / <code>.लिखप्रदत्त</code></td><td>read + parse / serialize + write JSON</td></tr>
+      <tr><td><code>सञ्चिका.विद्यते(पथ)</code> / <code>.निष्कासय(पथ)</code></td><td>exists / remove</td></tr>
+      <tr><td><code>जाल.आनय(url[, opts])</code></td><td><code>fetch</code> → <code>{ स्थितिः, पाठः, सफलम् }</code></td></tr>
+      <tr><td><code>जाल.आनयप्रदत्त(url[, opts])</code></td><td>fetch + parse JSON → <code>{ स्थितिः, प्रदत्तम्, सफलम् }</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="modules">The std/ modules</h2>
+  <p>Import these with <code>आयात { … } आ "std/&lt;name&gt;"</code>. Each is written in Devabhāṣā.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Module</th><th>Provides</th></tr></thead>
+    <tbody>
+      <tr><td><code>std/आकृति</code></td><td>runtime schemas — validate untrusted input against a shape → a path-qualified <code>परिणाम</code></td></tr>
+      <tr><td><code>std/मार्गकः</code></td><td>a Koa-style router: method + path with <code>:params</code> and middleware</td></tr>
+      <tr><td><code>std/कोष्ठागार</code></td><td>a JSON-file document store (dependency-free, browser-portable)</td></tr>
+      <tr><td><code>std/सञ्चयः</code></td><td>the same store API, backed by <strong>SQLite</strong> (durable, queryable)</td></tr>
+      <tr><td><code>std/प्रमाणम्</code></td><td>auth — signed tokens (<code>पत्रम्</code>) &amp; salted password hashing (<code>गूढपदम्</code>)</td></tr>
+      <tr><td><code>std/सत्र</code></td><td>signed-cookie sessions middleware</td></tr>
+      <tr><td><code>std/कुकी</code></td><td>cookie parsing &amp; <code>Set-Cookie</code> building</td></tr>
+      <tr><td><code>std/जालमध्यगाः</code></td><td>static-file serving (<code>स्थैतिक</code>) and CORS (<code>कोर्स</code>)</td></tr>
+      <tr><td><code>std/प्रलेख</code></td><td>structured logging — one JSON line per event</td></tr>
+      <tr><td><code>std/परीक्षा</code></td><td>a small test framework (<code>अपेक्ष</code> / <code>समम्</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <p>The persistence, validation, and server modules come together in the
+  <a href="backend.html">Backend &amp; Full-stack guide</a>.</p>
+
+  <div class="pager">
+    <a href="tutorial.html"><div class="dir">← Back</div>Tutorials</a>
+    <a class="r" href="backend.html"><div class="dir">Next →</div>Backend &amp; Full-stack</a>
+  </div>
+  </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="inner">
+    <div>देवभाषा · Devabhāṣā</div>
+    <div><a href="https://github.com/pariharshyamu/devabhasha">GitHub</a></div>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>
