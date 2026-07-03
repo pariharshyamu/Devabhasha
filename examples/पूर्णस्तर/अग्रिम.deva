@@ -1,11 +1,13 @@
-# अग्रिम — the FRONTEND half. Runs in the browser; fetches from the backend
-# API (जाल.आनयप्रदत्त) and renders the book list reactively. Same Sanskrit
-# language as the server, same Result error model, same JSON shapes.
+# अग्रिम — the FRONTEND half (agrima, "the one in front"). Runs in the browser;
+# fetches the book list from the backend (जाल.आनयप्रदत्त) and renders it
+# reactively (भाव/प्रभाव). Adds a book by POST, deletes by DELETE — and shows the
+# backend's validation error when the schema rejects a body. Same Sanskrit
+# language as the server, same परिणाम error model, same JSON shapes.
 
 भाव ग्रन्थाः = []।
-भाव स्थितिः = "आदाय..."।   # loading
+भाव स्थितिः = "आदाय..."।   # a reactive status/error line
 
-# fetch the list from our own backend, then fill the भाव cell
+# fetch the list from our own backend, then fill the भाव cells
 असमकालिक कार्य आनयतु () {
     चर परि = प्रतीक्षा जाल.आनयप्रदत्त("/api/ग्रन्थाः")।
     यदि (परि.सफल) {
@@ -14,6 +16,12 @@
     } अन्यथा {
         स्थितिः = "दोषः: " + परि.दोषः।
     }
+}
+
+# DELETE /api/ग्रन्थाः/:अङ्कः, then refresh
+असमकालिक कार्य निष्कासय_ (अङ्कः) {
+    प्रतीक्षा जाल.आनयप्रदत्त("/api/ग्रन्थाः/" + अङ्कः, कोष{ method: "DELETE" })।
+    आनयतु()।
 }
 
 चर आवरणम् = रचय मूलः रूप {
@@ -26,9 +34,9 @@
     रूप { वर्णः: "#3a2f1a", पाठसंरेखणम्: "center" }।
 आवरणम्.append(शिरः)।
 
-# a reactive status line (shows "loading" then clears)
+# a reactive status line (shows "loading", clears on success, shows errors)
 चर स्थितिपटः = रचय वाक्यः वाक्यम् बन्ध(कार्य(){ फलम् स्थितिः। })
-    रूप { वर्णः: धूसरः, पाठसंरेखणम्: "center" }।
+    रूप { वर्णः: रक्तः, पाठसंरेखणम्: "center", उच्चता: "20px" }।
 आवरणम्.append(स्थितिपटः)।
 
 # the list area, rebuilt reactively when ग्रन्थाः changes
@@ -40,30 +48,48 @@
     प्रत्येकम् (ग : ग्रन्थाः) {
         चर पत्रम् = रचय मूलः रूप {
             पृष्ठभूमिः: श्वेतः, अन्तरालः: "12px 16px", कोणवृत्तिः: "8px",
-            बाह्यान्तरः: "8px 0", सीमा: "1px solid #e8e2d5"
-        } {
+            बाह्यान्तरः: "8px 0", सीमा: "1px solid #e8e2d5",
+            प्रदर्शनम्: प्रवाहः, मेलनम्: केन्द्रम्, न्यायः: मध्ये
+        }।
+        चर विवरणम् = रचय मूलः {
             रचय शीर्षः वाक्यम् ग.शीर्षकम् रूप { बाह्यान्तरः: "0", अक्षरमानम्: "17px", वर्णः: "#3a2f1a" }।
             रचय वाक्यः वाक्यम् ग.लेखकः रूप { बाह्यान्तरः: "4px 0 0 0", वर्णः: धूसरः, अक्षरमानम्: "14px" }।
         }।
+        पत्रम्.append(विवरणम्)।
+
+        चर लोपः = रचय पटः वाक्यम् "✕"
+            रूप { पृष्ठभूमिः: अदृश्यम्, वर्णः: रक्तः, सीमा: अदृश्यम्, cursor: "pointer", अक्षरमानम्: "18px" }।
+        चर अङ्कः = ग.अङ्कः।
+        श्रोता(लोपः, "click", असमकालिक कार्य(){ प्रतीक्षा निष्कासय_(अङ्कः)। })।
+        पत्रम्.append(लोपः)।
+
         सूचीपटः.append(पत्रम्)।
     }
 })।
 
 # add-a-book form
-चर आदानम् = रचय पीठः गुणस्य कोष{ placeholder: "नवग्रन्थस्य शीर्षकम्" }।
-आदानम्.style.padding = "8px"। आदानम्.style.width = "60%"।
+चर शीर्षकादानम् = रचय पीठः गुणस्य कोष{ placeholder: "शीर्षकम्" }।
+शीर्षकादानम्.style.padding = "8px"। शीर्षकादानम्.style.width = "40%"।
+चर लेखकादानम् = रचय पीठः गुणस्य कोष{ placeholder: "लेखकः" }।
+लेखकादानम्.style.padding = "8px"। लेखकादानम्.style.width = "30%"।
+लेखकादानम्.style.margin = "0 0 0 6px"।
+
 चर पटः = रचय पटः वाक्यम् "योजय"
     रूप { पृष्ठभूमिः: नीलः, वर्णः: श्वेतः, अन्तरालः: "9px 16px", कोणवृत्तिः: "6px", सीमा: अदृश्यम्, cursor: "pointer", बाह्यान्तरः: "0 0 0 8px" }।
 श्रोता(पटः, "click", असमकालिक कार्य(){
-    यदि (आदानम्.value != "") {
-        चर देहपरि = प्रदत्त.सूत्रय(कोष{ शीर्षकम्: आदानम्.value, लेखकः: "अज्ञातः" })।
-        चर देहः = देहपरि.मूल्यम्।
-        चर परि = प्रतीक्षा जाल.आनयप्रदत्त("/api/ग्रन्थाः", कोष{ method: "POST", body: देहः })।
-        यदि (परि.सफल) { आदानम्.value = ""। आनयतु()। }
+    यदि (शीर्षकादानम्.value != "") {
+        चर देहपरि = प्रदत्त.सूत्रय(कोष{ शीर्षकम्: शीर्षकादानम्.value, लेखकः: लेखकादानम्.value })।
+        चर परि = प्रतीक्षा जाल.आनयप्रदत्त("/api/ग्रन्थाः", कोष{ method: "POST", body: देहपरि.मूल्यम् })।
+        यदि (परि.सफल && परि.मूल्यम्.स्थितिः < ३००) {
+            शीर्षकादानम्.value = ""। लेखकादानम्.value = ""।
+            आनयतु()।
+        } अन्यथा {
+            स्थितिः = "अस्वीकृतम्: " + परि.मूल्यम्.प्रदत्तम्.दोषः।
+        }
     }
 })।
 चर रूपम् = रचय मूलः रूप { बाह्यान्तरः: "16px 0 0 0", पाठसंरेखणम्: "center" }।
-रूपम्.append(आदानम्)। रूपम्.append(पटः)।
+रूपम्.append(शीर्षकादानम्)। रूपम्.append(लेखकादानम्)। रूपम्.append(पटः)।
 आवरणम्.append(रूपम्)।
 
 योजय(आवरणम्)।
