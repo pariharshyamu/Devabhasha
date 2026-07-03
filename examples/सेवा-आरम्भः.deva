@@ -1,0 +1,38 @@
+# सेवा-आरम्भः.deva — a service bootstrap: config from the environment, validated,
+# then structured logging with timing.
+#   node src/cli.js run examples/सेवा-आरम्भः.deva
+#   PORT=9090 LOG_LEVEL=निदान node src/cli.js run examples/सेवा-आरम्भः.deva
+#
+# The "service essentials": पर्यावरण reads config with अथवा defaults, आकृति
+# validates the assembled config, प्रलेख emits structured JSON logs, and काल()
+# times the work. All compose with the परिणाम model — nothing throws.
+
+आयात { प्रलेखकः } आ "std/प्रलेख"।
+आयात { वस्तु, अक्षर, सङ्ख्या, परीक्ष्य } आ "std/आकृति"।
+
+# read config from the environment, defaulting with अथवा and coercing with अङ्कय
+नियत पत्तनम् = अङ्कय(पर्यावरण("PORT") अथवा "8080") अथवा ८०८०।   # env string → सङ्ख्या
+नियत स्तरः = पर्यावरण("LOG_LEVEL") अथवा "सूचना"।
+नियत विन्यासः = कोष{ पत्तनम्: पत्तनम्, स्तरः: स्तरः }।
+
+# validate the assembled config against a schema (so a bad env fails clearly)
+नियत विन्यासआकृतिः = वस्तु(कोष{ पत्तनम्: सङ्ख्या, स्तरः: अक्षर })।
+नियत जाँच = परीक्ष्य(विन्यासआकृतिः, विन्यासः)।
+
+नियत लॉग = प्रलेखकः(कोष{ सेवा: "ग्रन्थालयः" })।   # every line carries सेवा
+
+यदि (जाँच.सफल == असत्यम्) {
+    लॉग.दोष("विन्यासदोषः", कोष{ कारणम्: जाँच.दोषः })।
+} अन्यथा {
+    लॉग.सूचना("सेवकः आरभ्यते", कोष{ पत्तनम्: पत्तनम्, लॉगस्तरः: स्तरः })।
+
+    # simulate handling one request, timed with the काल() clock
+    नियत आरम्भः = काल()।
+    चर योगः = ०।
+    चर i = ०।
+    यावत् (i < १०००००) { योगः = योगः + i। i++। }
+    नियत अवधिः = काल() - आरम्भः।
+
+    लॉग.सूचना("अनुरोधः सम्पन्नः", कोष{ अवधिः_मिस: अवधिः, फलम्: योगः })।
+    लॉग.निदान("आवर्तनं समाप्तम्")।
+}

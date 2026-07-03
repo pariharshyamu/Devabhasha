@@ -45,6 +45,9 @@ const __RT = {
     const n = Number(s);
     return Number.isNaN(n) ? __RT.err("अङ्कः न (not a number): " + s) : __RT.ok(n);
   },
+  // काल — the current time in epoch milliseconds (host-independent). A
+  // duration is काल() - start; a logger stamps each line with it.
+  now() { return Date.now(); },
 };
 `;
 
@@ -378,16 +381,26 @@ export function generate(ast, { includeRuntime = true, withMeta = false, sourceM
     }
   }
 
+  // A statement's OWN expression fields — the ones that evaluate as part of
+  // the statement itself, NOT the nested-statement bodies (an If's branches, a
+  // loop body), which are separate statements that hoist their own उद्धृ.
+  const OWN_EXPR_FIELDS = {
+    VarDecl: ['init'], Return: ['argument'], ExpressionStatement: ['expression'],
+    Print: ['args'], If: ['test'], While: ['test'], ForOf: ['iterable'], Switch: ['discriminant'],
+  };
+
   // Before a statement that contains उद्धृ, emit its guards: evaluate each
   // परिणाम once into a temp and short-circuit-return the विफलम् — then the
   // उद्धृ expression itself compiles to that temp's मूल्यम् (see genExpr).
   function hoistStmtUddhr(node, indent) {
-    const field = { VarDecl: 'init', Return: 'argument', ExpressionStatement: 'expression',
-      If: 'test', While: 'test', ForOf: 'iterable', Switch: 'discriminant' }[node.type];
-    const expr = field && node[field];
-    if (!expr) return;
+    const fields = OWN_EXPR_FIELDS[node.type];
+    if (!fields) return;
     const ups = [];
-    collectUddhr(expr, ups);
+    for (const f of fields) {
+      const v = node[f];
+      if (Array.isArray(v)) v.forEach(x => collectUddhr(x, ups));
+      else if (v) collectUddhr(v, ups);
+    }
     if (!ups.length) return;
     if (funcDepth === 0)
       throw new DevabhashaError('उद्धृदोषः: उद्धृ (Result-propagation) is only valid inside a कार्य (function)',

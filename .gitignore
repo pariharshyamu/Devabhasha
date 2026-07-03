@@ -13,3 +13,6 @@ playground/index.html
 examples/**/*.js
 examples/**/*.js.map
 !examples/**/चालय.mjs
+
+# SQLite databases created by examples at runtime
+*.db

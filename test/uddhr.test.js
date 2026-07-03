@@ -71,6 +71,17 @@ function run(src) {
      out[1] === 'बाह्यं समाप्तम्');
 }
 
+// ---------- उद्धृ nested inside a दर्शय / call argument ----------
+{
+  const out = run(`
+    कार्य f (र) { नियत v = उद्धृ र। फलम् साधितम्(v)। }
+    कार्य दर्शक (र) { दर्शय("मूल्यम्:", उद्धृ र)। फलम् साधितम्(०)। }
+    दर्शक(साधितम्(७))।
+    दर्शय(f(साधितम्(९)).मूल्यम्)।`);
+  ok('उद्धृ works inside a दर्शय argument (prints the unwrapped value)', out[0] === 'मूल्यम्: 7');
+  ok('a उद्धृ-using function still returns normally when it succeeds', out[1] === '9');
+}
+
 // ---------- उद्धृ outside any function is a compile error ----------
 {
   let threw = false, msg = '';

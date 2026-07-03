@@ -1,0 +1,48 @@
+# प्रमाणम्.deva — authentication (pramāṇa, "proof"): signed tokens & password
+# hashing, written IN Devabhāṣā over the गुप्ति crypto primitives + प्रदत्त (JSON).
+#
+# No secrets in the code — keys are passed in, salts are generated. Everything
+# that can fail returns a परिणाम. Two facilities:
+#   पत्रम्    — a signed token (HS256-style): base64url(payload) "." HMAC-SHA256.
+#   गूढपदम्  — password hashing: scrypt over a random salt, stored as "salt.hash".
+#
+#   आयात { पत्रम्, गूढपदम् } आ "std/प्रमाणम्"।
+#   नियत ट = पत्रम्.रचय(कोष{ उपयोक्ता: "राम" }, गुप्तकुञ्जी)।
+#   नियत फल = पत्रम्.सत्यापय(ट, गुप्तकुञ्जी)।           # → परिणाम<payload>
+#   नियत ग = गूढपदम्.रचय("गुप्तपदम्")।
+#   नियत ठीक = गूढपदम्.मेलय("गुप्तपदम्", ग)।            # → तथ्य
+
+# --- signed tokens ---
+# रचय(दत्तम्, कुञ्जी) → "base64url(json).HMAC" ; the payload is readable but
+# TAMPER-EVIDENT — any edit invalidates the signature.
+कार्य पत्ररचय (दत्तम्, कुञ्जी) {
+    नियत देहः = गुप्ति.संकेतय(प्रदत्त.सूत्रय(दत्तम्, असत्यम्) अथवा "null")।
+    फलम् देहः + "." + गुप्ति.मुद्रय(देहः, कुञ्जी)।
+}
+# सत्यापय(पत्रकम्, कुञ्जी) → परिणाम<दत्तम्> : verifies the signature in constant
+# time, then decodes + parses the payload (a bad parse is the परिणाम's विफलम्).
+कार्य पत्रसत्यापय (पत्रकम्, कुञ्जी) {
+    नियत भागाः = पत्रकम्.विभज(".")।
+    यदि (भागाः.दीर्घता != २) { फलम् विफलम्("दुष्टं रूपम् (malformed token)")। }
+    नियत देहः = भागाः[०]।
+    यदि (गुप्ति.समान(भागाः[१], गुप्ति.मुद्रय(देहः, कुञ्जी)) == असत्यम्) {
+        फलम् विफलम्("मुद्रा न मिलति (bad signature)")।
+    }
+    फलम् प्रदत्त.विश्लेषय(गुप्ति.विसंकेतय(देहः))।
+}
+
+# --- password hashing ---
+# रचय(पदम्) → "salt.hash" (a fresh random salt each time, so equal passwords
+# get different hashes). मेलय(पदम्, गूढम्) → तथ्य, in constant time.
+कार्य पदगूढय (पदम्) {
+    नियत लवणम् = गुप्ति.यादृच्छिक(१६)।
+    फलम् लवणम् + "." + गुप्ति.मन्थन(पदम्, लवणम्)।
+}
+कार्य पदमेलय (पदम्, गूढम्) {
+    नियत भागाः = गूढम्.विभज(".")।
+    यदि (भागाः.दीर्घता != २) { फलम् असत्यम्। }
+    फलम् गुप्ति.समान(गुप्ति.मन्थन(पदम्, भागाः[०]), भागाः[१])।
+}
+
+निर्यात नियत पत्रम् = कोष{ रचय: पत्ररचय, सत्यापय: पत्रसत्यापय }।
+निर्यात नियत गूढपदम् = कोष{ रचय: पदगूढय, मेलय: पदमेलय }।

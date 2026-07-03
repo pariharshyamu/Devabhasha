@@ -1,0 +1,51 @@
+# ग्रन्थालयः.deva — a tiny catalog service, backend end-to-end.
+#   node src/cli.js run examples/ग्रन्थालयः.deva
+#
+# This ties the backend arc together: कोष्ठागार (a JSON document store) for
+# PERSISTENCE, आकृति for VALIDATION at the boundary, उद्धृ for error PROPAGATION,
+# and परिणाम as the no-exceptions spine. Every step is a value; nothing throws.
+
+आयात { कोष्ठागार } आ "std/कोष्ठागार"।
+आयात { वस्तु, अक्षर, सङ्ख्या, विकल्पीय, परीक्ष्य } आ "std/आकृति"।
+
+# the shape every stored record must have — the store validates inserts against it
+नियत ग्रन्थआकृतिः = वस्तु(कोष{
+    शीर्षकम्: अक्षर,
+    वर्षम्: सङ्ख्या,
+    लेखकः: विकल्पीय(अक्षर)
+})।
+
+असमकालिक कार्य चालय () {
+    नियत पथ = "/tmp/ग्रन्थालयः-कोषः.json"।
+    # a fresh collection, whose योजय validates against ग्रन्थआकृतिः
+    नियत कोषः = कोष्ठागार(पथ, कार्य(र){ फलम् परीक्ष्य(ग्रन्थआकृतिः, र)। })।
+
+    # seed two valid books (उद्धृ propagates any I/O or validation विफलम्)
+    उद्धृ प्रतीक्षा कोषः.योजय(कोष{ शीर्षकम्: "मेघदूतम्", वर्षम्: ४००, लेखकः: "कालिदासः" })।
+    उद्धृ प्रतीक्षा कोषः.योजय(कोष{ शीर्षकम्: "पञ्चतन्त्रम्", वर्षम्: ३०० })।   # लेखकः optional
+    दर्शय("योजितम्, गणना:", (उद्धृ प्रतीक्षा कोषः.गणना()))।
+
+    # a bad record is rejected by the schema — the store never stores it
+    नियत दुष्टम् = प्रतीक्षा कोषः.योजय(कोष{ शीर्षकम्: "अपूर्णम्" })।   # वर्षम् missing
+    दर्शय("दुष्टम् निराकृतम्:", दुष्टम्.सफल, "—", दुष्टम्.दोषः)।
+
+    # correct a record in place
+    उद्धृ प्रतीक्षा कोषः.परिवर्तय(१, कोष{ वर्षम्: ४०५ })।
+    दर्शय("परिवर्तितम्:", (उद्धृ प्रतीक्षा कोषः.एकम्(१)).वर्षम्)।
+
+    # query: books before 350 CE
+    नियत प्राचीनाः = उद्धृ प्रतीक्षा कोषः.अन्वेषय(कार्य(ग्र){ फलम् ग्र.वर्षम् < ३५०। })।
+    दर्शय("प्राचीनाः (<350):", प्राचीनाः.दीर्घता, "—", प्राचीनाः[०].शीर्षकम्)।
+
+    # remove one, then report the final tally
+    उद्धृ प्रतीक्षा कोषः.निष्कासय(२)।
+    दर्शय("अन्तिमा गणना:", (उद्धृ प्रतीक्षा कोषः.गणना()))।
+
+    प्रतीक्षा सञ्चिका.निष्कासय(पथ)।   # tidy up the demo file
+    फलम् साधितम्("समाप्तम्")।
+}
+
+# चालय returns a परिणाम; report if the whole flow short-circuited on some विफलम्
+चालय().ततः(कार्य(फल){
+    यदि (फल.सफल == असत्यम्) { दर्शय("दोषः:", फल.दोषः)। }
+})।

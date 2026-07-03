@@ -1,0 +1,37 @@
+# सत्र.deva — signed-cookie sessions (satra, "session"), a मार्गकः middleware.
+#
+# Ties Arc D (पत्रम् signed tokens) to Arc E (cookies): the session is a पत्रम्
+# stored in a cookie, so it is tamper-evident and needs no server-side store.
+# The middleware reads + verifies the "sess" cookie into अनुरोधः.सत्रम् (the
+# payload कोष, or शून्यम् when absent/invalid), and attaches two response
+# helpers to be called BEFORE responding (this server flushes on प्रेषय_जेसन):
+#   प्रत्युत्तरम्.सत्रस्थापय(दत्तम्) — sign दत्तम् and set the cookie (login)
+#   प्रत्युत्तरम्.सत्रनाशः()        — clear the cookie (logout)
+#
+#   ऐप.उपयुज्(सत्रमध्यगः(गुप्तकुञ्जी))।
+#   ऐप.प्राप्("/अहम्", कार्य(अ, प्र){ प्र.प्रेषय_जेसन(अ.सत्रम् अथवा कोष{})। })।
+
+आयात { पठ, सज्जय } आ "std/कुकी"।
+आयात { पत्रम् } आ "std/प्रमाणम्"।
+
+निर्यात कार्य सत्रमध्यगः (कुञ्जी, विकल्पाः) {
+    नियत वि = विकल्पाः अथवा कोष{ पथ: "/", गुप्तम्: सत्यम्, समरूप: "Lax" }।
+    फलम् असमकालिक कार्य (अ, प्र, अग्रे) {
+        # read + verify the incoming session cookie
+        नियत कुकीज = पठ(अ.शीर्षाणि)।
+        नियत फल = पत्रम्.सत्यापय(कुकीज["sess"] अथवा "", कुञ्जी)।
+        यदि (फल.सफल) { अ.सत्रम् = फल.मूल्यम्। } अन्यथा { अ.सत्रम् = शून्यम्। }
+
+        # set / clear helpers (call before ending the response)
+        प्र.सत्रस्थापय = कार्य(दत्तम्){
+            प्र.शीर्षम्("Set-Cookie", सज्जय("sess", पत्रम्.रचय(दत्तम्, कुञ्जी), वि))।
+            अ.सत्रम् = दत्तम्।
+        }।
+        प्र.सत्रनाशः = कार्य(){
+            प्र.शीर्षम्("Set-Cookie", सज्जय("sess", "", कोष{ पथ: "/", महत्तमायुः: ० }))।
+            अ.सत्रम् = शून्यम्।
+        }।
+
+        प्रतीक्षा अग्रे()।
+    }।
+}

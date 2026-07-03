@@ -1,0 +1,44 @@
+# प्रलेख.deva — structured logging (pralekha, "record/log"), in Devabhāṣā.
+#
+# A logger emits ONE compact JSON line per event — a machine-parseable स्तरः
+# (level), a काल (epoch-ms timestamp), a संदेशः (message), and any structured
+# क्षेत्राणि (fields) — via दर्शय. This is what a server wants instead of bare
+# दर्शय: greppable, level-tagged, aggregatable output. Levels, low → high:
+# निदान (debug), सूचना (info), चेतावनी (warn), दोष (error). Pure Devabhāṣā over
+# काल() and प्रदत्त (JSON) — no host dependency of its own.
+#
+#   आयात { प्रलेख } आ "std/प्रलेख"।
+#   प्रलेख.सूचना("सेवकः आरब्धः", कोष{ पत्तनम्: ८०८० })।
+#     → {"काल":1234567890,"स्तरः":"सूचना","संदेशः":"सेवकः आरब्धः","पत्तनम्":8080}
+#
+#   नियत लॉग = प्रलेखकः(कोष{ सेवा: "ग्रन्थालयः" })।   # base fields on every line
+#   लॉग.दोष("कोषः न प्राप्तः", कोष{ अङ्कः: ५ })।
+
+# build one record and print it as a compact JSON line. आधारः / क्षेत्राणि may be
+# शून्यम् (समायोजय skips null/undefined sources), so both are optional. The
+# reserved keys (काल/स्तरः/संदेशः) are re-set AFTER the merge, so a stray field
+# named e.g. "स्तरः" can never silently rewrite a line's level.
+कार्य लेखय (आधारः, स्तरः, संदेशः, क्षेत्राणि) {
+    नियत मुद्रा = काल()।
+    चर लेखः = कोष{ काल: मुद्रा, स्तरः: स्तरः, संदेशः: संदेशः }।
+    लेखः = सङ्ग्रह.समायोजय(लेखः, आधारः)।
+    लेखः = सङ्ग्रह.समायोजय(लेखः, क्षेत्राणि)।
+    लेखः.काल = मुद्रा।
+    लेखः.स्तरः = स्तरः।
+    लेखः.संदेशः = संदेशः।
+    दर्शय(प्रदत्त.सूत्रय(लेखः, असत्यम्) अथवा "{}")।
+}
+
+# प्रलेखकः(आधारक्षेत्राणि?) — a logger whose base fields are merged into every
+# line (a service name, a request id, …). Returns { निदान, सूचना, चेतावनी, दोष }.
+निर्यात कार्य प्रलेखकः (आधारः) {
+    नियत ल = कोष{}।
+    ल.निदान   = कार्य(संदेशः, क्षेत्राणि){ लेखय(आधारः, "निदान", संदेशः, क्षेत्राणि)। }।
+    ल.सूचना   = कार्य(संदेशः, क्षेत्राणि){ लेखय(आधारः, "सूचना", संदेशः, क्षेत्राणि)। }।
+    ल.चेतावनी = कार्य(संदेशः, क्षेत्राणि){ लेखय(आधारः, "चेतावनी", संदेशः, क्षेत्राणि)। }।
+    ल.दोष     = कार्य(संदेशः, क्षेत्राणि){ लेखय(आधारः, "दोष", संदेशः, क्षेत्राणि)। }।
+    फलम् ल।
+}
+
+# प्रलेख — a ready-to-use default logger (no base fields), for quick use.
+निर्यात नियत प्रलेख = प्रलेखकः(शून्यम्)।
